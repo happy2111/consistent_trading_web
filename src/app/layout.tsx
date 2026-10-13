@@ -26,6 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ru"
+      suppressHydrationWarning
       className={cn(
         "h-full antialiased font-sans",
         geistSans.variable,

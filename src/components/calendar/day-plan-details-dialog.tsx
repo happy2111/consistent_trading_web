@@ -65,22 +65,6 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
     }
   }, [selectedPlanTemplates]);
 
-  if (!selectedPlanDate) return null;
-
-  const dateFormatted = format(selectedPlanDate, "dd MMMM yyyy, EEEE");
-
-  // Categorize templates
-  const morningTemplates = selectedPlanTemplates.filter(
-    (t) => t.fillPhase === "MORNING",
-  );
-  const eveningTemplates = selectedPlanTemplates.filter(
-    (t) => t.fillPhase === "EVENING",
-  );
-
-  const handleValueChange = (id: string, val: string) => {
-    setEditedValues((prev) => ({ ...prev, [id]: val }));
-  };
-
   const updateMutation = useMutation({
     mutationFn: async () => {
       // Save changes for all modified templates
@@ -120,11 +104,29 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
     },
   });
 
-  const handleOpenAddMore = () => {
-    closePlanDetails();
-    setAdminSelectedDate(selectedPlanDate);
-    setIsAdminPlanDialogOpen(true);
+  const handleValueChange = (id: string, val: string) => {
+    setEditedValues((prev) => ({ ...prev, [id]: val }));
   };
+
+  const handleOpenAddMore = () => {
+    if (selectedPlanDate) {
+      setAdminSelectedDate(selectedPlanDate);
+      setIsAdminPlanDialogOpen(true);
+    }
+    closePlanDetails();
+  };
+
+  if (!selectedPlanDate) return null;
+
+  const dateFormatted = format(selectedPlanDate, "dd MMMM yyyy, EEEE");
+
+  // Categorize templates
+  const morningTemplates = selectedPlanTemplates.filter(
+    (t) => t.fillPhase === "MORNING",
+  );
+  const eveningTemplates = selectedPlanTemplates.filter(
+    (t) => t.fillPhase === "EVENING",
+  );
 
   return (
     <Dialog open={isPlanDetailsOpen} onOpenChange={(open) => !open && closePlanDetails()}>
