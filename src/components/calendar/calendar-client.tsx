@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarView } from "./calendar-view";
 import { AdminPlanDialog } from "./admin-plan-dialog";
+import { DayPlanDetailsDialog } from "./day-plan-details-dialog";
 import { ReportDetailDialog } from "@/components/dashboard/report-detail-dialog";
 import { fetchReportHistory, fetchTaskTemplates } from "@/lib/api";
 import { Role } from "@/types/trading";
@@ -51,6 +52,9 @@ export function CalendarClient({ userId, role }: CalendarClientProps) {
 
       {/* Admin Plan Creator Modal */}
       {isAdmin && <AdminPlanDialog />}
+
+      {/* Day Plan Details & Edit Modal */}
+      <DayPlanDetailsDialog isAdmin={isAdmin} />
 
       {/* Detail Modal */}
       <ReportDetailDialog />

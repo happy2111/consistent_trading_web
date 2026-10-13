@@ -147,6 +147,17 @@ export async function createTaskTemplate(
   return data;
 }
 
+export async function updateTaskTemplate(
+  id: string,
+  payload: Partial<CreateTaskTemplateDto>,
+): Promise<TaskTemplate> {
+  const { data } = await apiClient.patch<TaskTemplate>(
+    `/api/templates/${id}`,
+    payload,
+  );
+  return data;
+}
+
 export async function deleteTaskTemplate(id: string): Promise<void> {
   await apiClient.delete(`/api/templates/${id}`);
 }

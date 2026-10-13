@@ -64,14 +64,12 @@ export function CalendarView({
     return map;
   }, [reports]);
 
-  // Check if a template covers a given day
-  const isPlanActiveForDay = (date: Date) => {
-    const dayOfWeek = getDay(date); // 0 = Sun, 1 = Mon ...
-    // Convert to 1..7 (1 = Mon, 7 = Sun)
+  const getActiveTemplatesForDay = (date: Date): TaskTemplate[] => {
+    const dayOfWeek = getDay(date);
     const convertedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
     const dateStr = format(date, "yyyy-MM-dd");
 
-    return templates.some((t) => {
+    return templates.filter((t) => {
       const start = t.startDate ? format(new Date(t.startDate), "yyyy-MM-dd") : "";
       const end = t.endDate ? format(new Date(t.endDate), "yyyy-MM-dd") : "";
       const isInRange = dateStr >= start && dateStr <= end;
@@ -80,12 +78,24 @@ export function CalendarView({
     });
   };
 
+  const isPlanActiveForDay = (date: Date) => {
+    return getActiveTemplatesForDay(date).length > 0;
+  };
+
   const handleDayClick = (date: Date) => {
     const key = format(date, "yyyy-MM-dd");
     const existingReport = reportsByDate.get(key);
 
     if (existingReport) {
       setSelectedReport(existingReport);
+      return;
+    }
+
+    const dayTemplates = getActiveTemplatesForDay(date);
+    if (dayTemplates.length > 0) {
+      // Open Plan Details for reading & editing
+      const { openPlanDetails } = useTradingStore.getState();
+      openPlanDetails(date, dayTemplates);
     } else if (isAdmin) {
       setAdminSelectedDate(date);
       setIsAdminPlanDialogOpen(true);

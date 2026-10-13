@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { DailyReport, DayResult, ReportStatus } from "@/types/trading";
+import { DailyReport, DayResult, ReportStatus, TaskTemplate } from "@/types/trading";
 
 interface TradingStoreState {
   // Calendar & Month selection
@@ -21,6 +21,13 @@ interface TradingStoreState {
   setIsAdminPlanDialogOpen: (open: boolean) => void;
   adminSelectedDate: Date | null;
   setAdminSelectedDate: (date: Date | null) => void;
+
+  // Day Plan Details / Edit dialog
+  selectedPlanDate: Date | null;
+  selectedPlanTemplates: TaskTemplate[];
+  isPlanDetailsOpen: boolean;
+  openPlanDetails: (date: Date, templates: TaskTemplate[]) => void;
+  closePlanDetails: () => void;
 }
 
 export const useTradingStore = create<TradingStoreState>((set) => ({
@@ -44,4 +51,20 @@ export const useTradingStore = create<TradingStoreState>((set) => ({
   setIsAdminPlanDialogOpen: (open) => set({ isAdminPlanDialogOpen: open }),
   adminSelectedDate: null,
   setAdminSelectedDate: (date) => set({ adminSelectedDate: date }),
+
+  selectedPlanDate: null,
+  selectedPlanTemplates: [],
+  isPlanDetailsOpen: false,
+  openPlanDetails: (date, templates) =>
+    set({
+      selectedPlanDate: date,
+      selectedPlanTemplates: templates,
+      isPlanDetailsOpen: true,
+    }),
+  closePlanDetails: () =>
+    set({
+      selectedPlanDate: null,
+      selectedPlanTemplates: [],
+      isPlanDetailsOpen: false,
+    }),
 }));
