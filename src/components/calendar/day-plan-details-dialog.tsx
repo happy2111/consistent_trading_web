@@ -120,14 +120,6 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
 
   const dateFormatted = format(selectedPlanDate, "dd MMMM yyyy, EEEE");
 
-  // Categorize templates
-  const morningTemplates = selectedPlanTemplates.filter(
-    (t) => t.fillPhase === "MORNING",
-  );
-  const eveningTemplates = selectedPlanTemplates.filter(
-    (t) => t.fillPhase === "EVENING",
-  );
-
   return (
     <Dialog open={isPlanDetailsOpen} onOpenChange={(open) => !open && closePlanDetails()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -142,141 +134,93 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
             </Badge>
           </div>
           <DialogDescription className="text-xs">
-            Ushbu kunga belgilangan savdo limitlari va intizom shartlari
+            Ushbu kunga belgilangan savdo limitlari va vazifalar ro&apos;yxati
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* 1. Morning (Plan & Limitlar) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <Clock className="size-3.5 text-amber-500" /> Ertalabki Reja & Limitlar (Morning)
-              </h4>
-              <Badge variant="outline" className="text-[10px]">
-                {morningTemplates.length} ta shart
-              </Badge>
-            </div>
-
-            {morningTemplates.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {morningTemplates.map((t) => {
-                  const currentVal = editedValues[t.id] ?? (t.defaultValue || "");
-                  const isLimit =
-                    t.title.toLowerCase().includes("zarar") ||
-                    t.title.toLowerCase().includes("foyda") ||
-                    t.title.toLowerCase().includes("trade");
-
-                  return (
-                    <div
-                      key={t.id}
-                      className="rounded-xl border bg-card p-3 shadow-xs space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-semibold text-foreground truncate">
-                          {t.title}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-mono">
-                          {t.fieldType}
-                        </span>
-                      </div>
-
-                      {isEditing && isAdmin ? (
-                        t.fieldType === "BOOLEAN" ? (
-                          <div className="flex items-center justify-between pt-1">
-                            <span className="text-xs text-muted-foreground">Holat:</span>
-                            <Switch
-                              checked={currentVal === "true"}
-                              onCheckedChange={(c) =>
-                                handleValueChange(t.id, c ? "true" : "false")
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <Input
-                            type={t.fieldType === "INT" ? "number" : "text"}
-                            value={currentVal}
-                            onChange={(e) => handleValueChange(t.id, e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                        )
-                      ) : (
-                        <div className="flex items-center gap-1.5 pt-0.5">
-                          {t.title.toLowerCase().includes("zarar") ? (
-                            <span className="text-sm font-bold text-rose-500">
-                              -${currentVal || "0"}
-                            </span>
-                          ) : t.title.toLowerCase().includes("foyda") ? (
-                            <span className="text-sm font-bold text-emerald-500">
-                              +${currentVal || "0"}
-                            </span>
-                          ) : t.fieldType === "BOOLEAN" ? (
-                            <Badge
-                              variant="secondary"
-                              className={
-                                currentVal === "true"
-                                  ? "bg-emerald-500/15 text-emerald-600 font-semibold"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {currentVal === "true" ? "Ha (Yoqilgan)" : "Yo'q"}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm font-bold text-foreground">
-                              {currentVal || "—"}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-xs italic text-muted-foreground">
-                Ertalabki shablonlar belgilanmagan.
-              </p>
-            )}
+        <div className="space-y-4 py-2">
+          <div className="flex items-center justify-between">
+            <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <Clock className="size-3.5 text-purple-600" /> Rejalar & Vazifalar (Plans & Tasks)
+            </h4>
+            <Badge variant="outline" className="text-[10px]">
+              {selectedPlanTemplates.length} ta vazifa
+            </Badge>
           </div>
 
-          <Separator />
-
-          {/* 2. Evening (Kechki hisobot shartlari) */}
-          {eveningTemplates.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <Sparkles className="size-3.5 text-indigo-500" /> Kechki Hisobot Maydonlari (Evening)
-                </h4>
-                <Badge variant="outline" className="text-[10px]">
-                  {eveningTemplates.length} ta maydon
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {eveningTemplates.map((t) => {
-                  const currentVal = editedValues[t.id] ?? (t.defaultValue || "");
-                  return (
-                    <div
-                      key={t.id}
-                      className="rounded-xl border bg-muted/20 p-3 space-y-1"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-medium text-foreground truncate">
-                          {t.title}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-mono">
-                          {t.fieldType}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {currentVal ? `Boshlang'ich: ${currentVal}` : "Kechqurun to'ldiriladi"}
-                      </p>
+          {selectedPlanTemplates.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {selectedPlanTemplates.map((t) => {
+                const currentVal = editedValues[t.id] ?? (t.defaultValue || "");
+                return (
+                  <div
+                    key={t.id}
+                    className="rounded-xl border bg-card p-3 shadow-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {t.title}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                        {t.fieldType}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {isEditing && isAdmin ? (
+                      t.fieldType === "BOOLEAN" ? (
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-xs text-muted-foreground">Holat:</span>
+                          <Switch
+                            checked={currentVal === "true"}
+                            onCheckedChange={(c) =>
+                              handleValueChange(t.id, c ? "true" : "false")
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <Input
+                          type={t.fieldType === "INT" ? "number" : "text"}
+                          value={currentVal}
+                          onChange={(e) => handleValueChange(t.id, e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      )
+                    ) : (
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        {t.title.toLowerCase().includes("zarar") ? (
+                          <span className="text-sm font-bold text-rose-500">
+                            -${currentVal || "0"}
+                          </span>
+                        ) : t.title.toLowerCase().includes("foyda") ? (
+                          <span className="text-sm font-bold text-emerald-500">
+                            +${currentVal || "0"}
+                          </span>
+                        ) : t.fieldType === "BOOLEAN" ? (
+                          <Badge
+                            variant="secondary"
+                            className={
+                              currentVal === "true"
+                                ? "bg-emerald-500/15 text-emerald-600 font-semibold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {currentVal === "true" ? "Ha (Yoqilgan)" : "Yo'q"}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm font-bold text-foreground">
+                            {currentVal || "—"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          ) : (
+            <p className="text-xs italic text-muted-foreground">
+              Reja shablonlari belgilanmagan.
+            </p>
           )}
         </div>
 

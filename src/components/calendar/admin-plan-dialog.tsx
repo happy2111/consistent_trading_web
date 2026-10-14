@@ -53,7 +53,6 @@ interface CustomField {
   id: string;
   title: string;
   fieldType: FieldType;
-  fillPhase: FillPhase;
   defaultValue: string;
 }
 
@@ -113,7 +112,6 @@ export function AdminPlanDialog() {
         id: Math.random().toString(36).substring(7),
         title: "",
         fieldType: "TEXT",
-        fillPhase: "MORNING",
         defaultValue: "",
       },
     ]);
@@ -185,13 +183,13 @@ export function AdminPlanDialog() {
         },
       ];
 
-      // Add custom fields
+      // Add custom fields (all are plan tasks)
       for (const cf of customFields) {
         if (cf.title.trim()) {
           templatesToCreate.push({
             title: cf.title.trim(),
             fieldType: cf.fieldType,
-            fillPhase: cf.fillPhase,
+            fillPhase: "MORNING" as FillPhase,
             isPrimary: false,
             startDate,
             endDate,
@@ -433,7 +431,7 @@ export function AdminPlanDialog() {
                           })
                         }
                       >
-                        <SelectTrigger className="h-8 w-[120px] text-xs">
+                        <SelectTrigger className="h-8 w-[140px] text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -441,22 +439,6 @@ export function AdminPlanDialog() {
                           <SelectItem value="TEXT">Matn (TEXT)</SelectItem>
                           <SelectItem value="BOOLEAN">Ha/Yo&apos;q (BOOL)</SelectItem>
                           <SelectItem value="IMAGE">Rasm (IMAGE)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={field.fillPhase}
-                        onValueChange={(val) =>
-                          updateCustomField(field.id, {
-                            fillPhase: val as FillPhase,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-[120px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MORNING">Morning (Ertalab)</SelectItem>
-                          <SelectItem value="EVENING">Evening (Kechqurun)</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button

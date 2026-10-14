@@ -59,12 +59,11 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Separate morning templates / values and evening custom fields
-  const { morningValues, eveningCustomValues, limits } = React.useMemo(() => {
+  // Unified custom fields and limits
+  const { customFieldsList, limits } = React.useMemo(() => {
     if (!report?.values) {
       return {
-        morningValues: [] as TaskValue[],
-        eveningCustomValues: [] as TaskValue[],
+        customFieldsList: [] as TaskValue[],
         limits: { maxZarar: 0, maxFoyda: 0, maxTrades: 0, hasLimits: false },
       };
     }
@@ -74,14 +73,12 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
     let maxT = 0;
     let foundLimits = false;
 
-    const morningList: TaskValue[] = [];
-    const eveningCustomList: TaskValue[] = [];
+    const customList: TaskValue[] = [];
 
     for (const v of report.values) {
       const title = v.template?.title?.toLowerCase() || "";
-      const phase = v.template?.fillPhase;
 
-      // Extract limits if primary/morning
+      // Extract limits if primary/standard
       if (title.includes("maksimal zarar")) {
         const val = parseInt(v.value || v.template?.defaultValue || "0", 10);
         if (!isNaN(val) && val > 0) {
@@ -102,8 +99,8 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
         }
       }
 
-      // Check if it's an extra custom field
-      const isKnownStandard =
+      // Check if it's an extra custom task that should be filled or verified
+      const isBuiltinField =
         title.includes("maksimal zarar") ||
         title.includes("maksimal foyda") ||
         title.includes("maksimal trade") ||
@@ -116,16 +113,13 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
         title.includes("rasm") ||
         title.includes("proof");
 
-      if (phase === "MORNING") {
-        morningList.push(v);
-      } else if (phase === "EVENING" && !isKnownStandard) {
-        eveningCustomList.push(v);
+      if (!isBuiltinField) {
+        customList.push(v);
       }
     }
 
     return {
-      morningValues: morningList,
-      eveningCustomValues: eveningCustomList,
+      customFieldsList: customList,
       limits: {
         maxZarar: maxZ,
         maxFoyda: maxF,
@@ -343,19 +337,19 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
             </div>
           </div>
 
-          {/* Morning Qo'shimcha Maydonlar / Ma'lumotlar */}
+          {/* Reja Ma'lumotlari (Plan Details) */}
           {isLoading ? (
             <div className="pt-2">
               <Skeleton className="h-10 w-full rounded-lg" />
             </div>
-          ) : morningValues.length > 0 ? (
+          ) : customFieldsList.length > 0 ? (
             <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                 <Sparkles className="size-3.5 text-amber-500" />
-                <span>Ertalabki Reja Ma&apos;lumotlari (Morning Plan Details):</span>
+                <span>Kunlik Reja Ma&apos;lumotlari (Plan Details):</span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {morningValues.map((v) => (
+                {customFieldsList.map((v) => (
                   <div key={v.id || v.templateId} className="rounded-lg border bg-card/60 px-2.5 py-1.5 text-xs">
                     <span className="text-[11px] text-muted-foreground block truncate">
                       {v.template?.title}
@@ -444,8 +438,8 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
                   </div>
                 </div>
 
-                {/* Dinamik Qo'shimcha Maydonlar (Evening Custom Fields) */}
-                {eveningCustomValues.length > 0 && (
+                {/* Dinamik Qo'shimcha Maydonlar */}
+                {customFieldsList.length > 0 && (
                   <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Sparkles className="size-3.5 text-indigo-500" />
@@ -453,7 +447,7 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {eveningCustomValues.map((field) => {
+                      {customFieldsList.map((field) => {
                         const templateId = field.templateId;
                         const template = field.template;
                         const currentVal = customValues[templateId] ?? (field.value || "");
