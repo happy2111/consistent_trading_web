@@ -5,15 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
+  ArrowUpRight,
   CalendarDays,
-  ClipboardPenLine,
   History,
   LayoutDashboard,
   LogOut,
-  ShieldAlert,
-  ShieldCheck,
+  MessageSquare,
   TrendingUp,
-  UserCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,33 +25,28 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   {
-    title: "Overview",
+    title: "Asosiy",
     url: "/",
     icon: LayoutDashboard,
-    description: "Financial KPI & Activity",
   },
   {
-    title: "Plan Calendar",
+    title: "Rejalar",
     url: "/calendar",
     icon: CalendarDays,
-    description: "Daily limits & planning",
   },
   {
-    title: "Daily Checkout",
-    url: "/checkout",
-    icon: ClipboardPenLine,
-    description: "Evening results submission",
-  },
-  {
-    title: "History & Reports",
+    title: "Hisobotlar",
     url: "/history",
     icon: History,
-    description: "Detailed logs & reflections",
+  },
+  {
+    title: "Chat",
+    url: "/chat",
+    icon: MessageSquare,
   },
 ];
 
@@ -62,8 +55,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
 
   const user = session?.user;
-  const userRole = (user?.role as "ADMIN" | "USER") || "USER";
-  const isAdmin = userRole === "ADMIN";
 
   const initials = user?.name
     ? user.name
@@ -84,11 +75,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <TrendingUp className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-bold tracking-tight text-foreground">
-                  TradeGuard
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  Reja & Discipline Control
+                <span className="truncate font-bold tracking-tight text-foreground text-base">
+                  Consistent Trading
                 </span>
               </div>
             </SidebarMenuButton>
@@ -98,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupLabel>Menyu</SidebarGroupLabel>
           <SidebarMenu>
             {navItems.map((item) => {
               const isActive =
@@ -117,37 +105,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <item.icon className="size-4 shrink-0" />
                     <div className="flex flex-1 items-center justify-between">
                       <span className="font-medium">{item.title}</span>
+                      {item.url === "/chat" && (
+                        <ArrowUpRight className="size-3.5 text-muted-foreground/80 transition-transform group-hover/menu-button:translate-x-0.5 group-hover/menu-button:-translate-y-0.5" />
+                      )}
                     </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );
             })}
           </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel>Status</SidebarGroupLabel>
-          <div className="rounded-lg border bg-card/60 p-3 text-xs shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Verification:</span>
-              <span className="inline-flex items-center gap-1 font-semibold text-emerald-500">
-                <UserCheck className="size-3.5" /> ID Verified
-              </span>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-muted-foreground">System Mode:</span>
-              <Badge
-                variant={isAdmin ? "default" : "secondary"}
-                className={
-                  isAdmin
-                    ? "bg-purple-600 text-white hover:bg-purple-600"
-                    : "text-xs"
-                }
-              >
-                {userRole}
-              </Badge>
-            </div>
-          </div>
         </SidebarGroup>
       </SidebarContent>
 

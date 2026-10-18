@@ -161,3 +161,33 @@ export async function updateTaskTemplate(
 export async function deleteTaskTemplate(id: string): Promise<void> {
   await apiClient.delete(`/api/templates/${id}`);
 }
+
+export async function fetchChatRooms(userId: string) {
+  const { data } = await apiClient.get('/api/chat/rooms', {
+    headers: { 'x-user-id': userId },
+  });
+  return data;
+}
+
+export async function fetchChatUsers(userId: string) {
+  const { data } = await apiClient.get('/api/chat/users', {
+    headers: { 'x-user-id': userId },
+  });
+  return data;
+}
+
+export async function createDirectChat(userId: string, targetUserId: string) {
+  const { data } = await apiClient.post(
+    '/api/chat/rooms/direct',
+    { targetUserId },
+    { headers: { 'x-user-id': userId } },
+  );
+  return data;
+}
+
+export async function fetchChatMessages(chatId: string, cursor?: string, limit = 30) {
+  const { data } = await apiClient.get(`/api/chat/rooms/${chatId}/messages`, {
+    params: { cursor, limit },
+  });
+  return data;
+}
