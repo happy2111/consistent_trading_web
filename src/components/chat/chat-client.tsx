@@ -2,27 +2,25 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import {
   ArrowLeft,
-  AtSign,
   Check,
   CheckCheck,
-  Mail,
-  MessageCircle,
+  LayoutDashboard,
+  Menu,
   MessageSquare,
+  MoreVertical,
+  Paperclip,
   Plus,
   Search,
   Send,
-  ShieldCheck,
-  TrendingUp,
-  UserCheck,
+  Smile,
   Users,
+  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useChatSocket, ChatMessage } from "@/lib/use-chat-socket";
+import { useChatSocket } from "@/lib/use-chat-socket";
 import {
   createDirectChat,
   fetchChatMessages,
@@ -60,6 +58,34 @@ interface ChatUser {
   verified?: boolean;
 }
 
+// Telegram-like avatar color palette for users without photo
+const AVATAR_COLORS = [
+  "bg-[#e17076]",
+  "bg-[#faa357]",
+  "bg-[#7bc862]",
+  "bg-[#65aadd]",
+  "bg-[#a695e7]",
+  "bg-[#ee7aae]",
+  "bg-[#6ec9cb]",
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function formatMessageTime(dateString?: string | null) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  if (isToday(d)) return format(d, "HH:mm");
+  if (isYesterday(d)) return "Вчера";
+  return format(d, "dd.MM");
+}
+
 export function ChatClient({
   userId,
   userName,
@@ -70,22 +96,21 @@ export function ChatClient({
   const [inputText, setInputText] = React.useState("");
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [isFetchingOlder, setIsFetchingOlder] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"chats" | "users">("chats");
+  const [activeTab, setActiveTab] = React.useState<"direct" | "group">("direct");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [showMobileList, setShowMobileList] = React.useState(true);
   const [isCreatingChat, setIsCreatingChat] = React.useState(false);
+  const [showMenuDropdown, setShowMenuDropdown] = React.useState(false);
 
-  // 1. Fetch User Rooms
+  // 1. Fetch Rooms
   const { data: rooms = [], refetch: refetchRooms } = useQuery<ChatRoom[]>({
     queryKey: ["chatRooms", userId],
     queryFn: () => fetchChatRooms(userId),
     enabled: Boolean(userId),
   });
 
-  // 2. Fetch All Platform Users for Directory
-  const { data: platformUsers = [], isLoading: isLoadingUsers } = useQuery<
-    ChatUser[]
-  >({
+  // 2. Fetch Platform Users
+  const { data: platformUsers = [] } = useQuery<ChatUser[]>({
     queryKey: ["chatUsers", userId],
     queryFn: () => fetchChatUsers(userId),
     enabled: Boolean(userId),
@@ -108,7 +133,7 @@ export function ChatClient({
     sendTyping,
   } = useChatSocket(userId, selectedChatId);
 
-  // 4. Load initial messages via cursor pagination when room changes
+  // 4. Load initial messages
   React.useEffect(() => {
     if (!selectedChatId) return;
 
@@ -122,7 +147,7 @@ export function ChatClient({
           senderId: m.senderId,
           senderName:
             `${m.sender?.firstName || ""} ${m.sender?.lastName || ""}`.trim() ||
-            "Trader",
+            "Пользователь",
           content: m.content,
           createdAt: m.createdAt,
           status: m.receipts?.some((r: any) => r.status === "READ")
@@ -144,9 +169,8 @@ export function ChatClient({
             id: "welcome-1",
             chatId: selectedChatId,
             senderId: "system",
-            senderName: "Consistent Trading",
-            content:
-              "Xush kelibsiz! Bu yerda treyderlar bilan real-vaqt rejimida fikr almashishingiz mumkin.",
+            senderName: "Система",
+            content: "Добро пожаловать в чат!",
             createdAt: new Date().toISOString(),
             status: "READ",
             readBy: [userId],
@@ -159,7 +183,7 @@ export function ChatClient({
     };
   }, [selectedChatId, setMessages, userId]);
 
-  // Load older messages (Infinite scroll upward)
+  // Load older messages on scroll top
   const loadOlderMessages = async () => {
     if (!nextCursor || isFetchingOlder || !selectedChatId) return;
     setIsFetchingOlder(true);
@@ -171,7 +195,7 @@ export function ChatClient({
         senderId: m.senderId,
         senderName:
           `${m.sender?.firstName || ""} ${m.sender?.lastName || ""}`.trim() ||
-          "Trader",
+          "Пользователь",
         content: m.content,
         createdAt: m.createdAt,
         status: m.receipts?.some((r: any) => r.status === "READ")
@@ -224,10 +248,9 @@ export function ChatClient({
       const room = await createDirectChat(userId, targetUser.id);
       await refetchRooms();
       setSelectedChatId(room.id);
-      setActiveTab("chats");
       setShowMobileList(false);
     } catch (err) {
-      console.error("Failed to open direct chat:", err);
+      console.error("Direct chat error:", err);
     } finally {
       setIsCreatingChat(false);
     }
@@ -236,19 +259,33 @@ export function ChatClient({
   const currentRoom = rooms.find((r) => r.id === selectedChatId);
   const typingList = Object.values(typingUsers);
 
-  // Search filtering
+  // Filter rooms by tab
+  const directRooms = rooms.filter((r) => r.type === "DIRECT");
+  const groupRooms = rooms.filter((r) => r.type === "GROUP");
+
   const query = searchQuery.trim().toLowerCase();
-  const filteredRooms = rooms.filter(
+
+  const filteredDirectRooms = directRooms.filter(
     (r) =>
       r.name.toLowerCase().includes(query) ||
       (r.lastMessage && r.lastMessage.toLowerCase().includes(query)),
   );
-  const filteredUsers = platformUsers.filter(
-    (u) =>
+
+  const filteredGroupRooms = groupRooms.filter(
+    (r) =>
+      r.name.toLowerCase().includes(query) ||
+      (r.lastMessage && r.lastMessage.toLowerCase().includes(query)),
+  );
+
+  // Users who don't have a direct conversation yet
+  const usersWithoutRoom = platformUsers.filter((u) => {
+    const matchesQuery =
+      !query ||
       u.name.toLowerCase().includes(query) ||
       (u.email && u.email.toLowerCase().includes(query)) ||
-      (u.username && u.username.toLowerCase().includes(query)),
-  );
+      (u.username && u.username.toLowerCase().includes(query));
+    return matchesQuery;
+  });
 
   const myInitials = userName
     ? userName
@@ -260,155 +297,310 @@ export function ChatClient({
     : "CT";
 
   return (
-    <div className="flex h-full w-full flex-col bg-background text-foreground select-none">
-      {/* 1. Standalone Top Bar / Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/80 bg-card px-4 sm:px-6 z-20">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 text-xs font-semibold hover:bg-accent border-border/80 transition-all"
+    <div className="flex h-screen w-screen overflow-hidden bg-[#0e0e10] text-[#e1e1e1] select-none font-sans p-0 sm:p-2.5 gap-2.5">
+      {/* =========================================================================
+          LEFT SIDEBAR (Telegram Web Style Island)
+         ========================================================================= */}
+      <aside
+        className={`${
+          showMobileList ? "flex" : "hidden"
+        } md:flex flex-col w-full md:w-[350px] lg:w-[380px] shrink-0 bg-[#1c1c1f] rounded-none sm:rounded-3xl border border-[#2b2b2f]/60 shadow-2xl overflow-hidden z-20`}
+      >
+        {/* Top Header: Hamburger / Dashboard, Search, User Avatar */}
+        <div className="p-3 pb-2 flex items-center gap-2.5 relative">
+          {/* Menu / Return to Dashboard */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowMenuDropdown((prev) => !prev)}
+              title="Меню"
+              className="size-9 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors"
             >
-              <ArrowLeft className="size-4" />
-              <span className="hidden sm:inline">Dashboardga qaytish</span>
-              <span className="sm:hidden">Dashboard</span>
-            </Button>
-          </Link>
+              <Menu className="size-5" />
+            </button>
 
-          <div className="h-5 w-px bg-border/80" />
-
-          <div className="flex items-center gap-2">
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
-              <TrendingUp className="size-4" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-tight text-foreground">
-                  Consistent Chat
-                </span>
-                <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-600 dark:text-purple-400">
-                  Online
-                </span>
-              </div>
-            </div>
+            {/* Menu Dropdown with Dashboard return */}
+            {showMenuDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowMenuDropdown(false)}
+                />
+                <div className="absolute top-11 left-0 z-40 w-52 bg-[#252528] rounded-2xl shadow-2xl border border-white/10 p-1.5 animate-in fade-in-50 zoom-in-95">
+                  <Link
+                    href="/"
+                    className="flex items-center gap-3 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 rounded-xl transition-colors"
+                  >
+                    <LayoutDashboard className="size-4 text-[#8774e1]" />
+                    <span>Вернуться на Dashboard</span>
+                  </Link>
+                  <div className="h-px bg-white/10 my-1" />
+                  <div className="px-3 py-2 text-[11px] text-[#888888]">
+                    {userName}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-        </div>
 
-        {/* Right side: Logged-in User Profile */}
-        <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-3 py-1">
-            <Avatar className="size-6">
+          {/* Search Input Bar (Telegram Pill) */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#777777]" />
+            <input
+              type="text"
+              placeholder="Поиск"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 rounded-full bg-[#27272a] hover:bg-[#2e2e32] focus:bg-[#2e2e32] focus:outline-hidden pl-9 pr-8 text-xs text-white placeholder-[#777777] transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[#777777] hover:text-white flex items-center justify-center"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* My Avatar */}
+          <div className="shrink-0 relative">
+            <Avatar className="size-8.5 ring-2 ring-transparent">
               {userImage ? (
                 <AvatarImage src={userImage} alt={userName} />
               ) : null}
-              <AvatarFallback className="bg-purple-600 text-white text-[10px] font-bold">
+              <AvatarFallback
+                className={`${getAvatarColor(
+                  userName,
+                )} text-white font-bold text-xs`}
+              >
                 {myInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold leading-none truncate max-w-[140px]">
-                {userName}
-              </span>
-              {userEmail && (
-                <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                  {userEmail}
-                </span>
-              )}
-            </div>
-            <span className="size-2 rounded-full bg-emerald-500 ring-2 ring-background shrink-0" />
+            <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-[#4fae4e] ring-2 ring-[#1c1c1f]" />
           </div>
         </div>
-      </header>
 
-      {/* 2. Main Chat Body: Left Sidebar + Right Messages */}
-      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* Left Panel: Chats & Traders Directory */}
-        <div
-          className={`${
-            showMobileList ? "flex" : "hidden"
-          } md:flex w-full md:w-80 lg:w-96 flex-col border-r border-border/80 bg-card shrink-0`}
-        >
-          {/* Search Box */}
-          <div className="p-3 border-b border-border/80 bg-muted/10">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Qidiruv: ism, email yoki suhbat..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9 text-xs bg-background"
-              />
-            </div>
-          </div>
-
-          {/* Tabs: Suhbatlar vs Treyderlar */}
-          <div className="grid grid-cols-2 p-1.5 border-b border-border/80 bg-muted/20 gap-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab("chats")}
-              className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-colors cursor-pointer ${
-                activeTab === "chats"
-                  ? "bg-background text-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+        {/* Tabs: Личные сообщения и Группы (Strictly 2 tabs as requested) */}
+        <div className="px-3 py-1 flex items-center gap-2 border-b border-[#2b2b2f]/50">
+          {/* Tab 1: Личные */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("direct")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "direct"
+                ? "bg-[#8774e1] text-white shadow-md font-bold"
+                : "text-[#aaaaaa] hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <span>Личные</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                activeTab === "direct"
+                  ? "bg-white/20 text-white"
+                  : "bg-[#2c2c30] text-[#888888]"
               }`}
             >
-              <MessageSquare className="size-3.5" />
-              <span>Suhbatlar</span>
-              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] text-muted-foreground font-mono">
-                {rooms.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("users")}
-              className={`flex items-center justify-center gap-2 py-2 rounded-lg transition-colors cursor-pointer ${
-                activeTab === "users"
-                  ? "bg-background text-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground"
+              {directRooms.length + usersWithoutRoom.length}
+            </span>
+          </button>
+
+          {/* Tab 2: Группы */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("group")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "group"
+                ? "bg-[#8774e1] text-white shadow-md font-bold"
+                : "text-[#aaaaaa] hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <span>Группы</span>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                activeTab === "group"
+                  ? "bg-white/20 text-white"
+                  : "bg-[#2c2c30] text-[#888888]"
               }`}
             >
-              <Users className="size-3.5" />
-              <span>Treyderlar</span>
-              <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] text-muted-foreground font-mono">
-                {platformUsers.length}
-              </span>
-            </button>
-          </div>
+              {groupRooms.length}
+            </span>
+          </button>
+        </div>
 
-          {/* List Content */}
-          <div className="flex-1 overflow-y-auto divide-y divide-border/60">
-            {activeTab === "chats" ? (
-              // Tab 1: Active Chat Rooms
-              filteredRooms.length === 0 ? (
-                <div className="p-8 text-center space-y-3">
-                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-purple-500/10 text-purple-600">
-                    <MessageCircle className="size-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      {searchQuery
-                        ? "Suhbat topilmadi"
-                        : "Hozircha suhbatlar yo'q"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      &quot;Treyderlar&quot; bo&apos;limiga o&apos;tib, platformadagi xohlagan a&apos;zo bilan suhbat boshlashingiz mumkin.
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setActiveTab("users")}
-                    className="text-xs gap-1.5"
+        {/* Chats / Users List */}
+        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+          {activeTab === "direct" ? (
+            <>
+              {/* Existing Direct Chats */}
+              {filteredDirectRooms.map((chat) => {
+                const isSelected = chat.id === selectedChatId;
+                const isOnline = onlineUsers.has(chat.id);
+                const time = formatMessageTime(chat.lastMessageTime);
+
+                return (
+                  <div
+                    key={chat.id}
+                    onClick={() => {
+                      setSelectedChatId(chat.id);
+                      setShowMobileList(false);
+                    }}
+                    className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-[#8774e1] text-white shadow-md"
+                        : "hover:bg-white/5 text-[#e1e1e1]"
+                    }`}
                   >
-                    <Users className="size-3.5" />
-                    <span>Treyderlarni ko&apos;rish</span>
-                  </Button>
+                    <div className="relative shrink-0">
+                      <Avatar className="size-12">
+                        {chat.avatarUrl && (
+                          <AvatarImage src={chat.avatarUrl} alt={chat.name} />
+                        )}
+                        <AvatarFallback
+                          className={`${getAvatarColor(
+                            chat.name,
+                          )} text-white font-bold text-sm`}
+                        >
+                          {chat.name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isOnline && (
+                        <span className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#4fae4e] ring-2 ring-[#1c1c1f]" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h4
+                          className={`text-[14px] font-semibold truncate ${
+                            isSelected ? "text-white" : "text-[#ffffff]"
+                          }`}
+                        >
+                          {chat.name}
+                        </h4>
+                        {time && (
+                          <span
+                            className={`text-[11px] shrink-0 font-medium ${
+                              isSelected ? "text-white/80" : "text-[#888888]"
+                            }`}
+                          >
+                            {time}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <p
+                          className={`text-xs truncate ${
+                            isSelected ? "text-white/90" : "text-[#8e8e93]"
+                          }`}
+                        >
+                          {chat.lastMessage || "Нет сообщений"}
+                        </p>
+                        {isSelected ? (
+                          <CheckCheck className="size-3.5 text-white/90 shrink-0" />
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* All Platform Users (Contacts list to start a chat with anyone) */}
+              <div className="pt-2 pb-1 px-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#777777]">
+                  Все пользователи
+                </span>
+              </div>
+
+              {usersWithoutRoom.length === 0 ? (
+                <div className="p-4 text-center text-xs text-[#888888]">
+                  Пользователи не найдены
                 </div>
               ) : (
-                filteredRooms.map((chat) => {
+                usersWithoutRoom.map((u) => {
+                  const isOnline = onlineUsers.has(u.id);
+                  const userInitials = u.name
+                    ? u.name
+                        .split(" ")
+                        .map((p) => p[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)
+                    : "CT";
+
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => handleStartDirectChat(u)}
+                      className="flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer hover:bg-white/5 transition-all text-[#e1e1e1]"
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar className="size-12">
+                          {u.image && <AvatarImage src={u.image} alt={u.name} />}
+                          <AvatarFallback
+                            className={`${getAvatarColor(
+                              u.name,
+                            )} text-white font-bold text-sm`}
+                          >
+                            {userInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        {isOnline ? (
+                          <span
+                            className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#4fae4e] ring-2 ring-[#1c1c1f]"
+                            title="В сети"
+                          />
+                        ) : (
+                          <span
+                            className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#444448] ring-2 ring-[#1c1c1f]"
+                            title="Не в сети"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-[14px] font-semibold text-white truncate">
+                            {u.name}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-[#8e8e93] truncate mt-0.5">
+                          {u.username ? (
+                            <span>@{u.username}</span>
+                          ) : u.email ? (
+                            <span>{u.email}</span>
+                          ) : (
+                            <span>Нажмите, чтобы написать</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </>
+          ) : (
+            // Groups Tab
+            <>
+              {filteredGroupRooms.length === 0 ? (
+                <div className="p-8 text-center space-y-3">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-white/5 text-[#8774e1]">
+                    <Users className="size-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white">
+                      Нет групп
+                    </p>
+                    <p className="text-xs text-[#888888]">
+                      Групповые чаты пока не созданы.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                filteredGroupRooms.map((chat) => {
                   const isSelected = chat.id === selectedChatId;
-                  const isOnline = onlineUsers.has(chat.id);
+                  const time = formatMessageTime(chat.lastMessageTime);
 
                   return (
                     <div
@@ -417,345 +609,281 @@ export function ChatClient({
                         setSelectedChatId(chat.id);
                         setShowMobileList(false);
                       }}
-                      className={`flex items-start gap-3 p-3.5 cursor-pointer transition-colors ${
+                      className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
                         isSelected
-                          ? "bg-purple-600/10 dark:bg-purple-600/15"
-                          : "hover:bg-muted/40"
+                          ? "bg-[#8774e1] text-white shadow-md"
+                          : "hover:bg-white/5 text-[#e1e1e1]"
                       }`}
                     >
                       <div className="relative shrink-0">
-                        <Avatar className="size-10 border border-border">
-                          {chat.avatarUrl && (
-                            <AvatarImage src={chat.avatarUrl} alt={chat.name} />
-                          )}
-                          <AvatarFallback className="bg-purple-600 text-white font-bold text-xs">
-                            {chat.type === "GROUP" ? (
-                              <Users className="size-4" />
-                            ) : (
-                              chat.name.slice(0, 2).toUpperCase()
-                            )}
+                        <Avatar className="size-12">
+                          <AvatarFallback className="bg-[#65aadd] text-white font-bold text-sm">
+                            <Users className="size-5" />
                           </AvatarFallback>
                         </Avatar>
-                        {isOnline && (
-                          <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
-                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-bold text-foreground truncate">
+                          <h4
+                            className={`text-[14px] font-semibold truncate ${
+                              isSelected ? "text-white" : "text-[#ffffff]"
+                            }`}
+                          >
                             {chat.name}
                           </h4>
-                          {chat.lastMessageTime && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">
-                              {format(new Date(chat.lastMessageTime), "HH:mm")}
+                          {time && (
+                            <span
+                              className={`text-[11px] shrink-0 font-medium ${
+                                isSelected ? "text-white/80" : "text-[#888888]"
+                              }`}
+                            >
+                              {time}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {chat.lastMessage || "Hozircha xabar yo'q"}
+                        <p
+                          className={`text-xs truncate mt-0.5 ${
+                            isSelected ? "text-white/90" : "text-[#8e8e93]"
+                          }`}
+                        >
+                          {chat.lastMessage || "Нет сообщений"}
                         </p>
                       </div>
                     </div>
                   );
                 })
-              )
-            ) : (
-              // Tab 2: All Platform Users Directory
-              isLoadingUsers ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                  Foydalanuvchilar yuklanmoqda...
-                </div>
-              ) : filteredUsers.length === 0 ? (
-                <div className="p-8 text-center space-y-2">
-                  <p className="text-xs font-semibold text-foreground">
-                    Foydalanuvchilar topilmadi
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Qidiruv so&apos;rovini o&apos;zgartirib ko&apos;ring.
-                  </p>
-                </div>
-              ) : (
-                filteredUsers.map((u) => {
-                  const isUserOnline = onlineUsers.has(u.id);
-                  const userInitials = u.name
-                    ? u.name
-                        .split(" ")
-                        .map((p) => p[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)
-                    : "TR";
-
-                  return (
-                    <div
-                      key={u.id}
-                      onClick={() => handleStartDirectChat(u)}
-                      className="flex items-start gap-3 p-3.5 hover:bg-muted/40 cursor-pointer transition-colors group"
-                    >
-                      <div className="relative shrink-0">
-                        <Avatar className="size-11 border border-border">
-                          {u.image && <AvatarImage src={u.image} alt={u.name} />}
-                          <AvatarFallback className="bg-emerald-600 text-white font-bold text-xs">
-                            {userInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                        {isUserOnline ? (
-                          <span
-                            className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background"
-                            title="Online"
-                          />
-                        ) : (
-                          <span
-                            className="absolute bottom-0 right-0 size-3 rounded-full bg-muted-foreground/40 ring-2 ring-background"
-                            title="Offline"
-                          />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-bold text-foreground truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                            {u.name}
-                          </h4>
-                          {u.verified && (
-                            <span title="Tasdiqlangan treyder" className="inline-flex items-center">
-                              <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
-                            </span>
-                          )}
-                          {u.role === "ADMIN" && (
-                            <span className="rounded bg-rose-500/10 px-1 py-0.2 text-[9px] font-bold text-rose-500 uppercase">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Contacts: Email / Username */}
-                        <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
-                          {u.email && (
-                            <div className="flex items-center gap-1.5 truncate">
-                              <Mail className="size-3 shrink-0 text-muted-foreground/70" />
-                              <span className="truncate">{u.email}</span>
-                            </div>
-                          )}
-                          {u.username && (
-                            <div className="flex items-center gap-1.5 truncate">
-                              <AtSign className="size-3 shrink-0 text-muted-foreground/70" />
-                              <span className="truncate">@{u.username}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="size-8 p-0 shrink-0 text-muted-foreground group-hover:text-purple-600 group-hover:bg-purple-500/10 transition-colors"
-                        title="Xabar yozish"
-                      >
-                        <MessageSquare className="size-4" />
-                      </Button>
-                    </div>
-                  );
-                })
-              )
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
+      </aside>
 
-        {/* Right Panel: Messages Window */}
-        <div
-          className={`${
-            showMobileList ? "hidden md:flex" : "flex"
-          } flex-1 flex-col h-full bg-background min-w-0`}
-        >
-          {selectedChatId && currentRoom ? (
-            <>
-              {/* Active Chat Header */}
-              <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between bg-card shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Mobile Back Button */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowMobileList(true)}
-                    className="md:hidden size-8 shrink-0 -ml-1 text-muted-foreground"
-                    title="Orqaga"
+      {/* =========================================================================
+          RIGHT CHAT WINDOW (Telegram Web Conversation Area)
+         ========================================================================= */}
+      <main
+        className={`${
+          showMobileList ? "hidden md:flex" : "flex"
+        } flex-1 flex-col h-full rounded-none sm:rounded-3xl border border-[#2b2b2f]/40 overflow-hidden relative shadow-2xl`}
+        style={{
+          backgroundColor: "#0e0e11",
+          backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.035) 1.5px, transparent 1.5px)`,
+          backgroundSize: "24px 24px",
+        }}
+      >
+        {selectedChatId && currentRoom ? (
+          <>
+            {/* Top Chat Header (Floating Pill matching screenshot) */}
+            <div className="m-2.5 mb-0 px-4 py-2.5 bg-[#1c1c1f]/95 backdrop-blur-md rounded-2xl border border-white/5 flex items-center justify-between z-10 shadow-lg">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Mobile Back Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowMobileList(true)}
+                  className="md:hidden size-8 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10"
+                >
+                  <ArrowLeft className="size-5" />
+                </button>
+
+                <Avatar className="size-10 shrink-0">
+                  {currentRoom.avatarUrl && (
+                    <AvatarImage
+                      src={currentRoom.avatarUrl}
+                      alt={currentRoom.name}
+                    />
+                  )}
+                  <AvatarFallback
+                    className={`${getAvatarColor(
+                      currentRoom.name,
+                    )} text-white font-bold text-sm`}
                   >
-                    <ArrowLeft className="size-5" />
-                  </Button>
-
-                  <Avatar className="size-9 border border-border shrink-0">
-                    {currentRoom.avatarUrl && (
-                      <AvatarImage
-                        src={currentRoom.avatarUrl}
-                        alt={currentRoom.name}
-                      />
+                    {currentRoom.type === "GROUP" ? (
+                      <Users className="size-5" />
+                    ) : (
+                      currentRoom.name.slice(0, 2).toUpperCase()
                     )}
-                    <AvatarFallback className="bg-purple-600 text-white font-bold text-xs">
-                      {currentRoom.type === "GROUP" ? (
-                        <Users className="size-4" />
-                      ) : (
-                        currentRoom.name.slice(0, 2).toUpperCase()
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
+                  </AvatarFallback>
+                </Avatar>
 
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-foreground truncate">
-                      {currentRoom.name}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
-                      <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
-                      <span className="truncate">Real-time chat faol</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab("users")}
-                    className="text-xs text-muted-foreground gap-1.5 hidden sm:flex"
-                  >
-                    <Users className="size-3.5" />
-                    <span>Treyderlar</span>
-                  </Button>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-bold text-white truncate">
+                    {currentRoom.name}
+                  </h3>
+                  <p className="text-[12px] text-[#8e8e93] truncate">
+                    {onlineUsers.has(currentRoom.id)
+                      ? "в сети"
+                      : "был(а) недавно"}
+                  </p>
                 </div>
               </div>
 
-              {/* Messages Area (Infinite Scroll on scroll to top) */}
-              <div
-                ref={messagesContainerRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto p-4 space-y-3"
-              >
-                {isFetchingOlder && (
-                  <div className="text-center text-[10px] text-muted-foreground py-1">
-                    Eski xabarlar yuklanmoqda...
-                  </div>
-                )}
+              {/* Right actions: Return to Dashboard button */}
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#27272a] hover:bg-[#34343a] text-xs font-semibold text-white border border-white/5 transition-colors"
+                  title="Вернуться на Dashboard"
+                >
+                  <LayoutDashboard className="size-3.5 text-[#8774e1]" />
+                  <span className="hidden sm:inline">На Dashboard</span>
+                </Link>
 
-                {messages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted-foreground space-y-2">
-                    <MessageSquare className="size-8 opacity-40" />
-                    <p className="text-xs">Ushbu suhbatda hali xabarlar yo&apos;q</p>
-                    <p className="text-[11px] opacity-70">
-                      Birinchi xabarni yozing va suhbatni boshlang!
-                    </p>
-                  </div>
-                ) : (
-                  messages.map((msg) => {
-                    const isMine = msg.senderId === userId;
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${
-                          isMine ? "items-end" : "items-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[82%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed shadow-xs ${
-                            isMine
-                              ? "bg-purple-600 text-white rounded-br-xs"
-                              : "bg-muted/80 text-foreground rounded-bl-xs border border-border/50"
-                          }`}
-                        >
-                          {!isMine && (
-                            <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 mb-0.5">
-                              {msg.senderName}
-                            </p>
-                          )}
-                          <p className="whitespace-pre-wrap break-words">
-                            {msg.content}
-                          </p>
-                          <div
-                            className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
-                              isMine ? "text-white/80" : "text-muted-foreground"
-                            }`}
-                          >
-                            <span>
-                              {msg.createdAt
-                                ? format(new Date(msg.createdAt), "HH:mm")
-                                : ""}
-                            </span>
-                            {isMine && (
-                              <span>
-                                {msg.status === "READ" ? (
-                                  <CheckCheck className="size-3 text-cyan-300" />
-                                ) : msg.status === "DELIVERED" ? (
-                                  <CheckCheck className="size-3 text-white/60" />
-                                ) : (
-                                  <Check className="size-3 text-white/60" />
-                                )}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
+                <button
+                  type="button"
+                  className="size-8 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <Search className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  className="size-8 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <MoreVertical className="size-4" />
+                </button>
               </div>
+            </div>
 
-              {/* Typing Indicator */}
-              {typingList.length > 0 && (
-                <div className="px-4 py-1 text-[11px] text-muted-foreground italic flex items-center gap-1.5 shrink-0 bg-background/80">
-                  <span className="size-1.5 rounded-full bg-purple-600 animate-ping" />
-                  <span>{typingList.join(", ")} yozmoqda...</span>
+            {/* Messages Scroll Area */}
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5 flex flex-col scrollbar-thin scrollbar-thumb-white/10"
+            >
+              {isFetchingOlder && (
+                <div className="self-center bg-black/40 backdrop-blur-md text-[11px] text-white/70 px-3 py-1 rounded-full">
+                  Загрузка истории...
                 </div>
               )}
 
-              {/* Input Bar */}
-              <form
-                onSubmit={handleSend}
-                className="p-3 border-t border-border/80 flex items-center gap-2 bg-card shrink-0"
-              >
-                <Input
-                  value={inputText}
-                  onChange={handleInputChange}
-                  placeholder="Xabar yozing..."
-                  className="h-10 text-xs bg-background flex-1"
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!inputText.trim()}
-                  className="size-10 bg-purple-600 hover:bg-purple-700 text-white shrink-0 transition-colors"
-                >
-                  <Send className="size-4" />
-                </Button>
-              </form>
-            </>
-          ) : (
-            // No chat selected state (Desktop)
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-              <div className="size-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                <MessageSquare className="size-8" />
+              {/* Date divider */}
+              <div className="self-center bg-black/40 backdrop-blur-md text-[11px] text-white/70 px-3.5 py-1 rounded-full font-medium my-2">
+                Сегодня
               </div>
-              <div className="max-w-sm space-y-1">
-                <h3 className="text-base font-bold text-foreground">
-                  Consistent Chat Hamjamiyati
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Chap tomondagi ro&apos;yxatdan mavjud suhbatni tanlang yoki &quot;Treyderlar&quot; bo&apos;limiga o&apos;tib, yangi muloqot boshlang.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab("users")}
-                className="gap-2 text-xs"
-              >
-                <Users className="size-4" />
-                <span>Barcha treyderlarni ko&apos;rish</span>
-              </Button>
+
+              {messages.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-[#777777] text-xs space-y-1">
+                  <MessageSquare className="size-8 opacity-30" />
+                  <p>Нет сообщений. Напишите первым!</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = msg.senderId === userId;
+                  const time = formatMessageTime(msg.createdAt);
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${
+                        isMine ? "items-end" : "items-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[85%] sm:max-w-[550px] px-3.5 py-2 text-[14px] leading-relaxed shadow-sm transition-all ${
+                          isMine
+                            ? "bg-[#7b61ff] text-white rounded-2xl rounded-br-xs"
+                            : "bg-[#212124] text-white rounded-2xl rounded-bl-xs border border-white/5"
+                        }`}
+                      >
+                        {!isMine && currentRoom.type === "GROUP" && (
+                          <p className="text-[11px] font-bold text-[#8774e1] mb-0.5">
+                            {msg.senderName}
+                          </p>
+                        )}
+                        <p className="whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
+                        <div
+                          className={`flex items-center justify-end gap-1 mt-1 text-[11px] select-none float-right ml-2 -mb-0.5 ${
+                            isMine ? "text-white/80" : "text-[#8e8e93]"
+                          }`}
+                        >
+                          <span>{time}</span>
+                          {isMine && (
+                            <span>
+                              {msg.status === "READ" ? (
+                                <CheckCheck className="size-3.5 text-cyan-200" />
+                              ) : msg.status === "DELIVERED" ? (
+                                <CheckCheck className="size-3.5 text-white/70" />
+                              ) : (
+                                <Check className="size-3.5 text-white/70" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-      </div>
+
+            {/* Typing Indicator */}
+            {typingList.length > 0 && (
+              <div className="px-6 py-1 text-xs text-[#8774e1] italic flex items-center gap-1.5 shrink-0">
+                <span className="size-1.5 rounded-full bg-[#8774e1] animate-ping" />
+                <span>{typingList.join(", ")} печатает...</span>
+              </div>
+            )}
+
+            {/* Bottom Input Bar (Floating Pill matching screenshot) */}
+            <form
+              onSubmit={handleSend}
+              className="m-2.5 mt-0 p-1.5 pl-3 bg-[#1c1c1f] rounded-2xl border border-white/5 flex items-center gap-2 shadow-xl shrink-0"
+            >
+              {/* Attachment Icon */}
+              <button
+                type="button"
+                className="size-9 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                title="Прикрепить файл"
+              >
+                <Paperclip className="size-5" />
+              </button>
+
+              {/* Text Input */}
+              <input
+                type="text"
+                value={inputText}
+                onChange={handleInputChange}
+                placeholder="Сообщение..."
+                className="flex-1 bg-transparent text-white text-[14px] placeholder-[#777777] focus:outline-hidden px-1"
+              />
+
+              {/* Emoji Smile */}
+              <button
+                type="button"
+                className="size-9 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                title="Эмодзи"
+              >
+                <Smile className="size-5" />
+              </button>
+
+              {/* Purple Telegram Send Button */}
+              <button
+                type="submit"
+                disabled={!inputText.trim()}
+                className="size-10 rounded-full bg-[#8774e1] hover:bg-[#7b61ff] disabled:opacity-40 disabled:hover:bg-[#8774e1] text-white flex items-center justify-center transition-all shrink-0 cursor-pointer shadow-md"
+                title="Отправить"
+              >
+                <Send className="size-4.5 -translate-x-0.5 translate-y-0.5" />
+              </button>
+            </form>
+          </>
+        ) : (
+          // Empty State when no chat is open
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+            <div className="size-16 rounded-full bg-[#8774e1]/10 flex items-center justify-center text-[#8774e1]">
+              <MessageSquare className="size-8" />
+            </div>
+            <h3 className="text-base font-bold text-white">Выберите чат</h3>
+            <p className="text-xs text-[#8e8e93] max-w-xs">
+              Выберите диалог из списка слева или начните общение с любым
+              пользователем.
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
