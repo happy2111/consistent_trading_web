@@ -173,24 +173,19 @@ export function PlanBalanceChart({ plan, reports = [] }: PlanBalanceChartProps) 
   return (
     <Card className="border-border/60 shadow-xs">
       <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
-        <div>
-          <CardTitle className="text-base font-bold flex items-center gap-2">
-            <TrendingUp className="size-4 text-purple-600" />
-            Balans O&apos;zgarishi & Maqsad Chizig&apos;i
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Boshlang&apos;ich ${plan.initialCapital} dan ${plan.targetBalance} maqsad sari harakat
-          </CardDescription>
-        </div>
+        <CardTitle className="text-sm font-bold flex items-center gap-2">
+          <TrendingUp className="size-4 text-purple-600" />
+          Balans Dinamikasi
+        </CardTitle>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1">
-            <span className="size-2.5 rounded-full bg-purple-600" />
-            <span className="font-medium">Hozirgi Balans</span>
+          <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-0.5 text-[11px]">
+            <span className="size-2 rounded-full bg-purple-600" />
+            <span className="font-medium">Balans</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-1">
-            <span className="size-2.5 rounded-full bg-emerald-500" />
-            <span className="font-medium">Maqsad (${plan.targetBalance})</span>
+          <div className="flex items-center gap-1.5 rounded-lg border bg-muted/30 px-2 py-0.5 text-[11px]">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            <span className="font-medium">Maqsad (${plan.targetBalance.toLocaleString()})</span>
           </div>
         </div>
       </CardHeader>
