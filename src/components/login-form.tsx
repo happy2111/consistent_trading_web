@@ -45,7 +45,7 @@ export function LoginForm({
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => signIn("google", { callbackUrl: "/onboarding" })}
+            onClick={() => signIn("google", { callbackUrl: "/" })}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="mr-2 size-4">
               <path
