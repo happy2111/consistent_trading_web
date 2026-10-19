@@ -285,8 +285,13 @@ export function AdminPlanDialog() {
 
   const createPlanMutation = useMutation({
     mutationFn: async () => {
+      const planId = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
       const templatesToCreate: CreateTaskTemplateDto[] = [
         {
+          planId,
           title: "Maksimal zarar",
           fieldType: "NUMBER",
           isPrimary: true,
@@ -296,6 +301,7 @@ export function AdminPlanDialog() {
           defaultValue: maxZarar,
         },
         {
+          planId,
           title: "Maksimal foyda",
           fieldType: "NUMBER",
           isPrimary: true,
@@ -305,6 +311,7 @@ export function AdminPlanDialog() {
           defaultValue: maxFoyda,
         },
         {
+          planId,
           title: "Kunlik maksimal trade soni",
           fieldType: "NUMBER",
           isPrimary: false,
@@ -314,6 +321,7 @@ export function AdminPlanDialog() {
           defaultValue: maxTrades,
         },
         {
+          planId,
           title: "Boshlang'ich kapital",
           fieldType: "NUMBER",
           isPrimary: false,
@@ -323,6 +331,7 @@ export function AdminPlanDialog() {
           defaultValue: initialCapital,
         },
         {
+          planId,
           title: "Maqsadli umumiy foyda",
           fieldType: "NUMBER",
           isPrimary: false,
@@ -332,6 +341,7 @@ export function AdminPlanDialog() {
           defaultValue: targetProfit,
         },
         {
+          planId,
           title: "London Session",
           fieldType: "BOOLEAN",
           isPrimary: false,
@@ -341,6 +351,7 @@ export function AdminPlanDialog() {
           defaultValue: String(londonSession),
         },
         {
+          planId,
           title: "New York Session",
           fieldType: "BOOLEAN",
           isPrimary: false,
@@ -354,6 +365,7 @@ export function AdminPlanDialog() {
       for (const cf of customFields) {
         if (cf.title.trim()) {
           templatesToCreate.push({
+            planId,
             title: cf.title.trim(),
             fieldType: cf.fieldType,
             isPrimary: false,

@@ -10,6 +10,7 @@ export type BalanceColor = "GREEN" | "YELLOW" | "RED";
 
 export interface TaskTemplate {
   id: string;
+  planId?: string | null;
   title: string;
   fieldType: FieldType;
   isPrimary: boolean;
@@ -19,6 +20,24 @@ export interface TaskTemplate {
   defaultValue?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PlanGroup {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  repeatDays: number[];
+  initialCapital: number;
+  targetBalance: number;
+  netProfitTarget: number;
+  maxZarar: number;
+  maxFoyda: number;
+  maxTrades: number;
+  templates: TaskTemplate[];
+  totalTradingDays: number;
+  isCompleted: boolean;
+  isCurrent: boolean;
 }
 
 export interface TaskValue {
@@ -76,6 +95,7 @@ export interface Statistics {
 }
 
 export interface CreateTaskTemplateDto {
+  planId?: string;
   title: string;
   fieldType: FieldType;
   isPrimary?: boolean;

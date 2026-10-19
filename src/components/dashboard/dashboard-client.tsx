@@ -2,15 +2,10 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { MetricCards } from "./metric-cards";
-import { PlanProgressCard } from "./plan-progress-card";
-import { PnLChart } from "./pnl-chart";
-import { HistoryTable } from "./history-table";
+import { PlanSeriesView } from "./plan-series-view";
 import { ReportDetailDialog } from "./report-detail-dialog";
-import { fetchReportHistory, fetchStatistics } from "@/lib/api";
+import { fetchReportHistory } from "@/lib/api";
 import { Role } from "@/types/trading";
-
 import { PageHeader } from "@/components/page-header";
 
 interface DashboardClientProps {
@@ -23,14 +18,7 @@ export function DashboardClient({ userId, role }: DashboardClientProps) {
   const currentYear = now.getUTCFullYear();
   const currentMonth = now.getUTCMonth() + 1; // 1-12
 
-  // 1. Fetch statistics
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["statistics", userId, currentYear, currentMonth],
-    queryFn: () => fetchStatistics(userId, currentYear, currentMonth),
-    enabled: Boolean(userId),
-  });
-
-  // 2. Fetch full reports history
+  // Fetch full reports history
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ["history", userId, currentYear, currentMonth],
     queryFn: () => fetchReportHistory(userId, currentYear, currentMonth),
@@ -41,20 +29,13 @@ export function DashboardClient({ userId, role }: DashboardClientProps) {
     <div className="space-y-6">
       <PageHeader title="Asosiy" />
 
-      {/* Plan Target, Capital & Hisob Progress */}
-      <PlanProgressCard reports={reports} />
-
-      {/* 1. KPI Metric Cards */}
-      <MetricCards stats={stats} isLoading={statsLoading} />
-
-      {/* 2. Visual Activity & PnL Chart */}
-      <PnLChart
-        daily={stats?.daily}
-        monthName={format(now, "MMMM yyyy")}
+      {/* Grouped Plan Series View with Selector, Big Countdown, Line Chart & Reports Table */}
+      <PlanSeriesView
+        userId={userId}
+        role={role}
+        reports={reports}
+        reportsLoading={reportsLoading}
       />
-
-      {/* 3. Daily History Table */}
-      <HistoryTable reports={reports} isLoading={reportsLoading} />
 
       {/* Modal Dialog for Reflection & Proof */}
       <ReportDetailDialog />
