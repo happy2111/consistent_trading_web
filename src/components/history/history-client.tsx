@@ -6,6 +6,8 @@ import { HistoryTable } from "@/components/dashboard/history-table";
 import { ReportDetailDialog } from "@/components/dashboard/report-detail-dialog";
 import { fetchReportHistory } from "@/lib/api";
 
+import { PageHeader } from "@/components/page-header";
+
 interface HistoryClientProps {
   userId: string;
 }
@@ -19,14 +21,7 @@ export function HistoryClient({ userId }: HistoryClientProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Savdo Tarixi & Hisobotlar
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Barcha oylardagi kunlik hisobotlar, tahlillar va isbot skrinshotlari
-        </p>
-      </div>
+      <PageHeader title="Hisobotlar" />
 
       <HistoryTable reports={reports} isLoading={isLoading} />
       <ReportDetailDialog />

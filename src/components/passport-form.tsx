@@ -193,7 +193,10 @@ export function PassportForm() {
       if (!apiUrl) throw new Error("API URL не настроен");
 
       const form = new FormData();
-      form.append("googleId", session?.user?.googleId ?? "");
+      form.append(
+        "googleId",
+        session?.user?.googleId || session?.user?.telegramId || session?.user?.id || "",
+      );
       form.append("email", session?.user?.email ?? "");
       form.append("firstName", firstName.trim());
       form.append("lastName", lastName.trim());

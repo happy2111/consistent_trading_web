@@ -6,11 +6,12 @@ import { DashboardClient } from "@/components/dashboard/dashboard-client";
 
 export default async function HomePage() {
   const session = await auth();
-  if (!session?.user?.googleId) {
+  const authId = session?.user?.googleId || session?.user?.telegramId || session?.user?.id;
+  if (!authId) {
     redirect("/login");
   }
 
-  const status = await fetchVerificationStatus(session.user.googleId);
+  const status = await fetchVerificationStatus(authId);
   if (!status.verified) {
     redirect("/onboarding");
   }

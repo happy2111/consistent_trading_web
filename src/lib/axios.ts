@@ -17,5 +17,11 @@ apiClient.interceptors.request.use(async (config) => {
   if (session?.user?.googleId) {
     config.headers["x-google-id"] = session.user.googleId;
   }
+  if (session?.user?.telegramId) {
+    config.headers["x-telegram-id"] = session.user.telegramId;
+  }
+  if (session?.user?.id) {
+    config.headers["x-user-id"] = session.user.id;
+  }
   return config;
 });

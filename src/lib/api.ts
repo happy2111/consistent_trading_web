@@ -13,7 +13,8 @@ const apiBase = () =>
   "";
 
 export type VerificationStatus = {
-  googleId: string;
+  googleId?: string;
+  telegramId?: string;
   userId: string | null;
   verified: boolean;
   role?: "ADMIN" | "USER";
@@ -40,32 +41,67 @@ export async function upsertGoogleUser(payload: {
   return res.json();
 }
 
+export async function authTelegramUser(payload: {
+  id: string | number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date?: string | number;
+  hash: string;
+}) {
+  const base = apiBase();
+  if (!base) return null;
+
+  const res = await fetch(`${base}/api/users/telegram`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || "Telegram authentication failed");
+  }
+  return res.json();
+}
+
 /** Always fetch from Nest DB — never trust client/localStorage */
 export async function fetchVerificationStatus(
-  googleId: string,
+  identifier: string,
 ): Promise<VerificationStatus> {
   const base = apiBase();
-  if (!base || !googleId) {
-    return { googleId, userId: null, verified: false, role: "USER" };
+  if (!base || !identifier) {
+    return { userId: null, verified: false, role: "USER" };
   }
 
   try {
     const res = await fetch(
-      `${base}/api/users/google/${encodeURIComponent(googleId)}/status`,
+      `${base}/api/users/status/${encodeURIComponent(identifier)}`,
       { cache: "no-store" },
     );
     if (!res.ok) {
-      return { googleId, userId: null, verified: false, role: "USER" };
+      // Fallback for older server builds
+      const fallbackRes = await fetch(
+        `${base}/api/users/google/${encodeURIComponent(identifier)}/status`,
+        { cache: "no-store" },
+      );
+      if (!fallbackRes.ok) {
+        return { userId: null, verified: false, role: "USER" };
+      }
+      return (await fallbackRes.json()) as VerificationStatus;
     }
     const data = (await res.json()) as VerificationStatus;
     return {
-      googleId: data.googleId ?? googleId,
+      googleId: data.googleId,
+      telegramId: data.telegramId,
       userId: data.userId ?? null,
       verified: Boolean(data.verified),
       role: data.role || "USER",
     };
   } catch {
-    return { googleId, userId: null, verified: false, role: "USER" };
+    return { userId: null, verified: false, role: "USER" };
   }
 }
 

@@ -29,6 +29,15 @@ import {
 } from "@/components/ui/card";
 import { DailyReport, DayResult, ReportStatus } from "@/types/trading";
 import { useTradingStore } from "@/lib/store";
+import { parseDecimal } from "@/lib/utils";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Check } from "lucide-react";
 
 interface HistoryTableProps {
   reports: DailyReport[];
@@ -61,51 +70,158 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
     return `-$${maxZarar || "0"} / +$${maxFoyda || "0"}`;
   };
 
-  const hasProof = (report: DailyReport) => {
-    return report.values?.some(
+  const getProofImageUrl = (report: DailyReport): string | null => {
+    const val = report.values?.find(
       (v) =>
         v.template?.fieldType === "IMAGE" ||
+        v.template?.title.toLowerCase().includes("rasm") ||
+        v.template?.title.toLowerCase().includes("proof") ||
+        v.template?.title.toLowerCase().includes("skrinshot") ||
         (v.value && (v.value.startsWith("http") || v.value.startsWith("data:image"))),
     );
+    return val?.value || null;
   };
+
+  const hasProof = (report: DailyReport) => {
+    return Boolean(getProofImageUrl(report));
+  };
+
+  const filterOptions = [
+    { value: "ALL", label: "Barchasi" },
+    { value: "WIN", label: "Win" },
+    { value: "STOP_LOSS", label: "Stop Loss" },
+  ] as const;
+
+  const currentFilterLabel =
+    filterOptions.find((f) => f.value === statusFilter)?.label || "Barchasi";
 
   return (
     <Card className="border-border/60 shadow-sm">
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-base font-semibold">
-            Kunlik Savdo Tarixi (Daily Reports)
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Barcha hisobotlar, reja va fakt natijalari
-          </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 sm:px-6">
+        <div className="text-sm font-semibold text-muted-foreground">
+          Jami: {filteredReports.length} ta
         </div>
 
-        {/* Status Filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Filter className="mr-1 size-3.5 text-muted-foreground" />
-          {(["ALL", "WIN", "STOP_LOSS", "MISSED"] as const).map((filter) => (
-            <Button
-              key={filter}
-              variant={statusFilter === filter ? "default" : "outline"}
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => setStatusFilter(filter)}
-            >
-              {filter === "ALL"
-                ? "Barchasi"
-                : filter === "WIN"
-                ? "Win"
-                : filter === "STOP_LOSS"
-                ? "Stop Loss"
-                : "O'tkazilgan"}
+        {/* Filter Popup Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-medium">
+              <Filter className="size-3.5 text-muted-foreground" />
+              <span>Filtr: {currentFilterLabel}</span>
             </Button>
-          ))}
-        </div>
+          } />
+          <DropdownMenuContent align="end" className="min-w-36">
+            {filterOptions.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value)}
+                className="flex items-center justify-between text-xs cursor-pointer"
+              >
+                <span>{opt.label}</span>
+                {statusFilter === opt.value && <Check className="size-3.5 text-purple-600" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        {/* Mobile View: Cards */}
+        <div className="block md:hidden divide-y divide-border">
+          {isLoading ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Yuklanmoqda...
+            </div>
+          ) : filteredReports.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              Hech qanday hisobot topilmadi.
+            </div>
+          ) : (
+            filteredReports.map((report) => {
+              const proofImgUrl = getProofImageUrl(report);
+              const totalFoyda = parseDecimal(report.totalFoyda);
+              const totalZarar = parseDecimal(report.totalZarar);
+              const netHisob = parseDecimal(report.netHisob);
+              const isPositive = netHisob >= 0;
+
+              return (
+                <div
+                  key={report.id}
+                  onClick={() => setSelectedReport(report)}
+                  className="p-4 space-y-2.5 cursor-pointer transition-colors active:bg-muted/60 hover:bg-muted/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">
+                        {report.date
+                          ? format(new Date(report.date), "dd.MM.yyyy")
+                          : "—"}
+                      </span>
+                      <Badge
+                        variant={
+                          report.dayResult === "WIN"
+                            ? "default"
+                            : report.dayResult === "STOP_LOSS"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                        className={`text-[10px] ${
+                          report.dayResult === "WIN"
+                            ? "bg-emerald-600 text-white"
+                            : ""
+                        }`}
+                      >
+                        {report.dayResult || report.status}
+                      </Badge>
+                    </div>
+                    <span
+                      className={`text-sm font-bold ${
+                        isPositive ? "text-emerald-500" : "text-rose-500"
+                      }`}
+                    >
+                      {isPositive ? "+" : ""}
+                      ${netHisob.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div>
+                      Reja limit: {getPlanLimits(report)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-500 font-medium">
+                        +${totalFoyda.toFixed(2)}
+                      </span>
+                      <span>/</span>
+                      <span className="text-rose-500 font-medium">
+                        -${totalZarar.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Proof Image Preview */}
+                  {proofImgUrl && (
+                    <div className="relative mt-1 overflow-hidden rounded-lg border border-border/80 bg-muted/40">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={proofImgUrl}
+                        alt="Proof preview"
+                        className="h-28 w-full object-cover transition-transform active:scale-105"
+                      />
+                      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded bg-background/85 px-2 py-0.5 text-[10px] font-medium backdrop-blur">
+                        <ImageIcon className="size-3 text-blue-500" />
+                        <span>Isbot</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop / Tablet View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow>
@@ -134,8 +250,11 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
                 </TableRow>
               ) : (
                 filteredReports.map((report) => {
-                  const proofAvailable = hasProof(report);
-                  const isPositive = report.netHisob >= 0;
+                  const proofImgUrl = getProofImageUrl(report);
+                  const totalFoyda = parseDecimal(report.totalFoyda);
+                  const totalZarar = parseDecimal(report.totalZarar);
+                  const netHisob = parseDecimal(report.netHisob);
+                  const isPositive = netHisob >= 0;
 
                   return (
                     <TableRow
@@ -152,10 +271,10 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
                         {getPlanLimits(report)}
                       </TableCell>
                       <TableCell className="text-right font-medium text-xs text-emerald-500">
-                        +${report.totalFoyda}
+                        +${totalFoyda.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right font-medium text-xs text-rose-500">
-                        -${report.totalZarar}
+                        -${totalZarar.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right font-bold text-xs">
                         <span
@@ -164,7 +283,7 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
                           }
                         >
                           {isPositive ? "+" : ""}
-                          ${report.netHisob}
+                          ${netHisob.toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
@@ -186,10 +305,15 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        {proofAvailable ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-500">
-                            <ImageIcon className="size-3.5" /> Bor
-                          </span>
+                        {proofImgUrl ? (
+                          <div className="flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={proofImgUrl}
+                              alt="Proof preview"
+                              className="size-8 rounded-md border border-border object-cover shadow-2xs transition-transform hover:scale-125 hover:z-10"
+                            />
+                          </div>
                         ) : (
                           <span className="text-[11px] text-muted-foreground">
                             Yo&apos;q

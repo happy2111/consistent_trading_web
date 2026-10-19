@@ -1,8 +1,6 @@
 export type Role = "ADMIN" | "USER";
 
-export type FieldType = "INT" | "TEXT" | "BOOLEAN" | "IMAGE";
-
-export type FillPhase = "MORNING" | "EVENING";
+export type FieldType = "NUMBER" | "TEXT" | "BOOLEAN" | "IMAGE";
 
 export type ReportStatus = "PENDING" | "COMPLETED" | "MISSED";
 
@@ -14,7 +12,6 @@ export interface TaskTemplate {
   id: string;
   title: string;
   fieldType: FieldType;
-  fillPhase: FillPhase;
   isPrimary: boolean;
   startDate: string;
   endDate: string;
@@ -81,7 +78,6 @@ export interface Statistics {
 export interface CreateTaskTemplateDto {
   title: string;
   fieldType: FieldType;
-  fillPhase: FillPhase;
   isPrimary?: boolean;
   startDate: string;
   endDate: string;
@@ -96,6 +92,8 @@ export interface SubmitTaskValueDto {
 
 export interface SubmitReportDto {
   reportId: string;
-  values: SubmitTaskValueDto[];
+  values?: SubmitTaskValueDto[];
+  totalFoyda?: number;
+  totalZarar?: number;
   finalize?: boolean;
 }

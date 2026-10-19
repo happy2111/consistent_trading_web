@@ -48,6 +48,7 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
   // Primary form states
   const [factFoyda, setFactFoyda] = React.useState("");
   const [factZarar, setFactZarar] = React.useState("");
+  const [factTrades, setFactTrades] = React.useState("");
   const [extraProfit, setExtraProfit] = React.useState("");
   const [reflection, setReflection] = React.useState("");
   const [proofFile, setProofFile] = React.useState<File | null>(null);
@@ -99,15 +100,22 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
         }
       }
 
-      // Check if it's an extra custom task that should be filled or verified
+      // Check if it's a built-in field handled by dedicated UI inputs
+      // Only qo'shimcha foyda/profit is a builtin — other qo'shimcha fields (malumot, maydon) are custom
+      const isQoshimchaProfit =
+        (title.includes("qo'shimcha") || title.includes("qoshimcha")) &&
+        (title.includes("foyda") || title.includes("profit"));
+
       const isBuiltinField =
         title.includes("maksimal zarar") ||
         title.includes("maksimal foyda") ||
         title.includes("maksimal trade") ||
         (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha")) ||
-        title.includes("zarar") ||
-        title.includes("qo'shimcha") ||
-        title.includes("qoshimcha") ||
+        (title.includes("zarar") && !title.includes("maksimal")) ||
+        title.includes("fact trade") ||
+        title.includes("faktik trade") ||
+        (title.includes("trade soni") && !title.includes("maksimal")) ||
+        isQoshimchaProfit ||
         title.includes("tahlil") ||
         title.includes("reflection") ||
         title.includes("rasm") ||
@@ -139,11 +147,13 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
       const title = v.template?.title?.toLowerCase() || "";
       const val = v.value || v.template?.defaultValue || "";
 
-      if (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha")) {
+      if (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha") && !title.includes("maksimal")) {
         if (v.value && !factFoyda) setFactFoyda(v.value);
-      } else if (title.includes("zarar")) {
+      } else if (title.includes("zarar") && !title.includes("maksimal")) {
         if (v.value && !factZarar) setFactZarar(v.value);
-      } else if (title.includes("qo'shimcha") || title.includes("qoshimcha") || title.includes("extra")) {
+      } else if (title.includes("fact trade") || title.includes("faktik trade") || (title.includes("trade soni") && !title.includes("maksimal"))) {
+        if (v.value && !factTrades) setFactTrades(v.value);
+      } else if ((title.includes("qo'shimcha") || title.includes("qoshimcha") || title.includes("extra")) && (title.includes("foyda") || title.includes("profit"))) {
         if (v.value && !extraProfit) setExtraProfit(v.value);
       } else if (title.includes("tahlil") || title.includes("reflection") || v.template?.fieldType === "TEXT") {
         if (v.value && !reflection) setReflection(v.value);
@@ -204,11 +214,13 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
         const title = v.template?.title?.toLowerCase() || "";
         let val = customValues[v.templateId] ?? (v.value || "");
 
-        if (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha")) {
+        if (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha") && !title.includes("maksimal")) {
           val = factFoyda;
-        } else if (title.includes("zarar")) {
+        } else if (title.includes("zarar") && !title.includes("maksimal")) {
           val = factZarar;
-        } else if (title.includes("qo'shimcha") || title.includes("qoshimcha") || title.includes("extra")) {
+        } else if (title.includes("fact trade") || title.includes("faktik trade") || (title.includes("trade soni") && !title.includes("maksimal"))) {
+          val = factTrades;
+        } else if ((title.includes("qo'shimcha") || title.includes("qoshimcha") || title.includes("extra")) && (title.includes("foyda") || title.includes("profit"))) {
           val = extraProfit;
         } else if (title.includes("tahlil") || title.includes("reflection") || (v.template?.fieldType === "TEXT" && !customValues[v.templateId])) {
           val = reflection;
@@ -225,6 +237,8 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
       return submitDailyReport({
         reportId: report.id,
         values: valuesToSubmit,
+        totalFoyda: factFoyda ? parseFloat(factFoyda) || 0 : 0,
+        totalZarar: factZarar ? parseFloat(factZarar) || 0 : 0,
         finalize: true,
       });
     },
@@ -293,7 +307,10 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">Maksimal Zarar</p>
                 {isLoading ? (
-                  <Skeleton className="h-5 w-16" />
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-5 w-8 rounded" />
+                    <span className="text-sm font-bold text-rose-500/40 animate-pulse">-$100</span>
+                  </div>
                 ) : (
                   <p className="text-sm font-bold text-rose-500">
                     {limits.hasLimits || limits.maxZarar > 0 ? `-$${limits.maxZarar}` : "Belgilanmagan"}
@@ -310,7 +327,10 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">Maksimal Foyda</p>
                 {isLoading ? (
-                  <Skeleton className="h-5 w-16" />
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-5 w-8 rounded" />
+                    <span className="text-sm font-bold text-emerald-500/40 animate-pulse">+$500</span>
+                  </div>
                 ) : (
                   <p className="text-sm font-bold text-emerald-500">
                     {limits.hasLimits || limits.maxFoyda > 0 ? `+$${limits.maxFoyda}` : "Belgilanmagan"}
@@ -327,7 +347,10 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
               <div className="space-y-1">
                 <p className="text-[11px] text-muted-foreground">Max Savdolar (Trades)</p>
                 {isLoading ? (
-                  <Skeleton className="h-5 w-14" />
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-5 w-8 rounded" />
+                    <span className="text-sm font-bold text-foreground/40 animate-pulse">3 ta</span>
+                  </div>
                 ) : (
                   <p className="text-sm font-bold text-foreground">
                     {limits.hasLimits || limits.maxTrades > 0 ? `${limits.maxTrades} ta` : "Belgilanmagan"}
@@ -384,7 +407,8 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
           <CardContent className="space-y-5">
             {isLoading ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Skeleton className="h-14 w-full" />
                   <Skeleton className="h-14 w-full" />
                   <Skeleton className="h-14 w-full" />
                   <Skeleton className="h-14 w-full" />
@@ -395,7 +419,7 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
             ) : (
               <>
                 {/* Numeric inputs */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="factFoyda" className="text-xs font-semibold text-emerald-500">
                       Fact Foyda ($)
@@ -421,6 +445,20 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
                       placeholder="0"
                       value={factZarar}
                       onChange={(e) => setFactZarar(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="factTrades" className="text-xs font-semibold text-indigo-500">
+                      Fact Trade soni
+                    </Label>
+                    <Input
+                      id="factTrades"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={factTrades}
+                      onChange={(e) => setFactTrades(e.target.value)}
                     />
                   </div>
 
@@ -473,7 +511,7 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
                           );
                         }
 
-                        if (template?.fieldType === "INT") {
+                        if (template?.fieldType === "NUMBER" || (template?.fieldType as string) === "INT") {
                           return (
                             <div key={templateId} className="space-y-1.5">
                               <Label htmlFor={`custom-${templateId}`} className="text-xs font-medium">
@@ -482,7 +520,8 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
                               <Input
                                 id={`custom-${templateId}`}
                                 type="number"
-                                placeholder={template.defaultValue || "0"}
+                                step="any"
+                                placeholder={template.defaultValue || "0.00"}
                                 value={currentVal}
                                 onChange={(e) => handleCustomChange(templateId, e.target.value)}
                               />

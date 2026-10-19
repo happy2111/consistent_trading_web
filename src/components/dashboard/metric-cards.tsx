@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Statistics } from "@/types/trading";
+import { parseDecimal } from "@/lib/utils";
 
 interface MetricCardsProps {
   stats?: Statistics | null;
@@ -32,10 +33,10 @@ export function MetricCards({ stats, isLoading }: MetricCardsProps) {
     );
   }
 
+  const umumiyFoyda = parseDecimal(stats.umumiyFoyda);
+  const umumiyZarar = parseDecimal(stats.umumiyZarar);
+  const umumiyHisob = parseDecimal(stats.umumiyHisob);
   const {
-    umumiyFoyda,
-    umumiyZarar,
-    umumiyHisob,
     winRate,
     winCount,
     stopLossCount,

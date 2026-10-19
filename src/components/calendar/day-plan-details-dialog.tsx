@@ -104,19 +104,19 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
     },
   });
 
+  // All hooks must be called before any conditional return (Rules of Hooks)
+
+  if (!selectedPlanDate) return null;
+
   const handleValueChange = (id: string, val: string) => {
     setEditedValues((prev) => ({ ...prev, [id]: val }));
   };
 
   const handleOpenAddMore = () => {
-    if (selectedPlanDate) {
-      setAdminSelectedDate(selectedPlanDate);
-      setIsAdminPlanDialogOpen(true);
-    }
+    setAdminSelectedDate(selectedPlanDate);
+    setIsAdminPlanDialogOpen(true);
     closePlanDetails();
   };
-
-  if (!selectedPlanDate) return null;
 
   const dateFormatted = format(selectedPlanDate, "dd MMMM yyyy, EEEE");
 
@@ -179,7 +179,8 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
                         </div>
                       ) : (
                         <Input
-                          type={t.fieldType === "INT" ? "number" : "text"}
+                          type={t.fieldType === "NUMBER" ? "number" : "text"}
+                          step={t.fieldType === "NUMBER" ? "any" : undefined}
                           value={currentVal}
                           onChange={(e) => handleValueChange(t.id, e.target.value)}
                           className="h-8 text-xs"

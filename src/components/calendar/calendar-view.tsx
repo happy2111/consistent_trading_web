@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DailyReport, TaskTemplate } from "@/types/trading";
 import { useTradingStore } from "@/lib/store";
+import { parseDecimal } from "@/lib/utils";
 
 interface CalendarViewProps {
   reports?: DailyReport[];
@@ -115,20 +116,20 @@ export function CalendarView({
     <Card className="border-border/60 shadow-sm">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-purple-600/10 p-2 text-purple-600">
+          <div className="rounded-xl bg-purple-600/10 p-2 text-purple-600 shrink-0">
             <CalendarDays className="size-5" />
           </div>
           <div>
-            <CardTitle className="text-lg font-bold">
+            <CardTitle className="text-base sm:text-lg font-bold">
               {format(currentMonth, "MMMM yyyy")}
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Intizom va savdo natijalari taqvimi
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
             <Button
               variant="ghost"
@@ -162,29 +163,30 @@ export function CalendarView({
               onClick={handleOpenCreatePlan}
               className="h-8 gap-1.5 bg-purple-600 text-xs font-semibold text-white shadow-sm hover:bg-purple-700"
             >
-              <Plus className="size-3.5" /> Yangi Reja Yaratish
+              <Plus className="size-3.5" /> <span className="hidden sm:inline">Yangi Reja Yaratish</span><span className="sm:hidden">Reja</span>
             </Button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="p-2 sm:p-6">
         {/* Weekday headers */}
-        <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-muted-foreground mb-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-[11px] sm:text-xs font-semibold text-muted-foreground mb-1.5 sm:mb-2">
           {WEEKDAYS.map((w) => (
             <div key={w} className="py-1">
-              {w}
+              <span className="sm:hidden">{w.slice(0, 2)}</span>
+              <span className="hidden sm:inline">{w}</span>
             </div>
           ))}
         </div>
 
         {/* Days grid */}
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {/* Leading blank slots */}
           {Array.from({ length: leadingBlankDays }).map((_, i) => (
             <div
               key={`blank-${i}`}
-              className="min-h-[92px] rounded-xl border border-transparent bg-muted/10 p-2 opacity-30"
+              className="min-h-[58px] sm:min-h-[96px] rounded-lg sm:rounded-xl border border-transparent bg-muted/10 p-1 sm:p-2 opacity-30"
             />
           ))}
 
@@ -194,67 +196,95 @@ export function CalendarView({
             const report = reportsByDate.get(dateStr);
             const hasActivePlan = isPlanActiveForDay(day);
             const today = isToday(day);
+            let statusBg = "";
+            let statusTextColor = "";
+            if (report) {
+              if (report.status === "COMPLETED") {
+                const net = parseDecimal(report.netHisob);
+                if (net >= 0) {
+                  statusBg = "bg-emerald-500 text-white font-bold";
+                  statusTextColor = "text-emerald-500";
+                } else {
+                  statusBg = "bg-rose-500 text-white font-bold";
+                  statusTextColor = "text-rose-500";
+                }
+              } else if (report.status === "MISSED") {
+                statusBg = "bg-muted-foreground/30 text-foreground font-semibold";
+              } else {
+                statusBg = "bg-amber-500 text-white font-bold";
+              }
+            } else if (hasActivePlan) {
+              statusBg = "bg-purple-600/20 text-purple-600 dark:text-purple-400 font-semibold ring-1 ring-purple-600/50";
+            }
 
             return (
               <div
                 key={dateStr}
                 onClick={() => handleDayClick(day)}
-                className={`group relative flex min-h-[96px] flex-col justify-between rounded-xl border p-2 text-left transition-all hover:border-foreground/30 hover:shadow-md cursor-pointer ${
+                className={`group relative flex min-h-[52px] sm:min-h-[96px] flex-col items-center sm:items-stretch justify-center sm:justify-between rounded-xl border p-1 sm:p-2 text-center sm:text-left transition-all hover:border-foreground/30 hover:shadow-md cursor-pointer ${
                   today
                     ? "border-purple-600/60 bg-purple-600/5 ring-1 ring-purple-600/40"
                     : "border-border/60 bg-card hover:bg-muted/40"
                 }`}
               >
-                {/* Header: day number & plan indicator */}
-                <div className="flex items-center justify-between">
+                {/* Header / Main Number */}
+                <div className="flex w-full items-center justify-center sm:justify-between">
                   <span
-                    className={`flex size-6 items-center justify-center rounded-full text-xs font-bold ${
+                    className={`flex size-8 sm:size-6 items-center justify-center rounded-full text-sm sm:text-xs font-bold transition-transform ${
                       today
-                        ? "bg-purple-600 text-white"
+                        ? "bg-purple-600 text-white shadow-sm"
+                        : statusBg
+                        ? `${statusBg} sm:bg-transparent sm:text-foreground sm:ring-0 group-hover:text-purple-600`
                         : "text-foreground group-hover:text-purple-600"
                     }`}
                   >
                     {format(day, "d")}
                   </span>
 
+                  {/* Desktop Plan dot indicator */}
                   {hasActivePlan && (
                     <span
                       title="Ushbu kunga reja belgilangan"
-                      className="size-1.5 rounded-full bg-purple-600"
+                      className="hidden sm:inline-block size-1.5 rounded-full bg-purple-600"
                     />
                   )}
                 </div>
 
-                {/* Performance Tags: WIN, STOP LOSS, MISSED */}
-                <div className="mt-auto pt-1 space-y-1">
+                {/* Performance Tags: Shown on tablet / desktop only, on mobile circle color defines status */}
+                <div className="hidden sm:block mt-auto pt-1 space-y-1">
                   {report ? (
                     report.status === "COMPLETED" ? (
-                      <div
-                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                          report.netHisob >= 0
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                            : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{report.dayResult || "WIN"}</span>
-                          <span>
-                            {report.netHisob >= 0 ? "+" : ""}
-                            ${report.netHisob}
-                          </span>
-                        </div>
-                      </div>
+                      (() => {
+                        const netHisob = parseDecimal(report.netHisob);
+                        return (
+                          <div
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                              netHisob >= 0
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{report.dayResult || "WIN"}</span>
+                              <span>
+                                {netHisob >= 0 ? "+" : ""}
+                                ${netHisob.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()
                     ) : report.status === "MISSED" ? (
-                      <div className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground text-center">
+                      <div className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground text-center truncate">
                         MISSED
                       </div>
                     ) : (
-                      <div className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 text-center">
+                      <div className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 text-center truncate">
                         PENDING
                       </div>
                     )
                   ) : hasActivePlan ? (
-                    <div className="rounded-md border border-dashed border-purple-500/30 px-1 py-0.5 text-[9px] font-medium text-purple-600/80 text-center">
+                    <div className="rounded border border-dashed border-purple-500/30 px-1 py-0.5 text-[9px] font-medium text-purple-600/80 text-center truncate">
                       Rejali kun
                     </div>
                   ) : null}

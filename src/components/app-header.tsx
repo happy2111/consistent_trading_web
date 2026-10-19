@@ -19,10 +19,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const breadcrumbTitles: Record<string, string> = {
-  "/": "Overview",
-  "/calendar": "Plan Calendar",
-  "/checkout": "Daily Checkout",
-  "/history": "History & Reports",
+  "/": "Asosiy",
+  "/calendar": "Rejalar",
+  "/history": "Hisobotlar",
+  "/chat": "Chat",
 };
 
 export function AppHeader() {
@@ -30,19 +30,19 @@ export function AppHeader() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
 
-  const title = breadcrumbTitles[pathname] || "Dashboard";
+  const title = breadcrumbTitles[pathname] || "Asosiy";
   const role = (session?.user?.role as "ADMIN" | "USER") || "USER";
   const isAdmin = role === "ADMIN";
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/95 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="hidden md:flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/95 px-4 backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/">TradeGuard</BreadcrumbLink>
+              <BreadcrumbLink href="/">Consistent Trading</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>

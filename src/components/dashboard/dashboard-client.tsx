@@ -10,6 +10,8 @@ import { ReportDetailDialog } from "./report-detail-dialog";
 import { fetchReportHistory, fetchStatistics } from "@/lib/api";
 import { Role } from "@/types/trading";
 
+import { PageHeader } from "@/components/page-header";
+
 interface DashboardClientProps {
   userId: string;
   role: Role;
@@ -36,17 +38,7 @@ export function DashboardClient({ userId, role }: DashboardClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Top Section: Header & Greeting */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Savdo Boshqaruvi (Dashboard)
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            {format(now, "MMMM yyyy")} oyi intizom va moliyaviy hisobotlari
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Asosiy" />
 
       {/* 1. KPI Metric Cards */}
       <MetricCards stats={stats} isLoading={statsLoading} />

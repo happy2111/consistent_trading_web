@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DailyReport } from "@/types/trading";
 import { useTradingStore } from "@/lib/store";
+import { parseDecimal } from "@/lib/utils";
 
 export function ReportDetailDialog() {
   const { selectedReport, isReportSheetOpen, setIsReportSheetOpen } =
@@ -33,28 +34,37 @@ export function ReportDetailDialog() {
     ? format(new Date(selectedReport.date), "dd MMMM yyyy, EEEE")
     : "";
 
-  // Extract reflection text from evening values
-  const reflectionValue = selectedReport.values?.find(
-    (v) =>
-      v.template?.fieldType === "TEXT" ||
-      v.template?.title.toLowerCase().includes("tahlil") ||
-      v.template?.title.toLowerCase().includes("reflection") ||
-      v.template?.title.toLowerCase().includes("xulosa"),
-  )?.value;
+  // Extract all reflection/text items
+  const reflectionItems =
+    selectedReport.values?.filter(
+      (v) =>
+        v.template?.fieldType === "TEXT" ||
+        v.template?.title.toLowerCase().includes("tahlil") ||
+        v.template?.title.toLowerCase().includes("reflection") ||
+        v.template?.title.toLowerCase().includes("xulosa"),
+    ) ?? [];
 
-  // Extract proof image from values
-  const proofImageUrl = selectedReport.values?.find(
-    (v) =>
-      v.template?.fieldType === "IMAGE" ||
-      v.template?.title.toLowerCase().includes("rasm") ||
-      v.template?.title.toLowerCase().includes("proof") ||
-      v.template?.title.toLowerCase().includes("skrinshot") ||
-      (v.value && (v.value.startsWith("http") || v.value.startsWith("data:image"))),
-  )?.value;
+  // Extract all proof images
+  const proofImages =
+    selectedReport.values?.filter(
+      (v) =>
+        v.template?.fieldType === "IMAGE" ||
+        v.template?.title.toLowerCase().includes("rasm") ||
+        v.template?.title.toLowerCase().includes("proof") ||
+        v.template?.title.toLowerCase().includes("skrinshot") ||
+        (v.value && (v.value.startsWith("http") || v.value.startsWith("data:image"))),
+    ) ?? [];
+
+  const reflectionIds = new Set(
+    reflectionItems.map((v) => v.id || v.templateId),
+  );
+  const proofIds = new Set(proofImages.map((v) => v.id || v.templateId));
 
   // Other numeric and boolean values
   const otherValues = selectedReport.values?.filter(
-    (v) => v.value !== reflectionValue && v.value !== proofImageUrl,
+    (v) =>
+      !reflectionIds.has(v.id || v.templateId) &&
+      !proofIds.has(v.id || v.templateId),
   );
 
   return (
@@ -90,33 +100,40 @@ export function ReportDetailDialog() {
 
         <div className="space-y-5 py-2">
           {/* Summary Banner */}
-          <div className="grid grid-cols-3 gap-2 rounded-xl border bg-muted/40 p-3 text-center">
-            <div>
-              <p className="text-[11px] text-muted-foreground">Foyda</p>
-              <p className="text-sm font-bold text-emerald-500">
-                +${selectedReport.totalFoyda}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground">Zarar</p>
-              <p className="text-sm font-bold text-rose-500">
-                -${selectedReport.totalZarar}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground">Net Hisob</p>
-              <p
-                className={`text-sm font-bold ${
-                  selectedReport.netHisob >= 0
-                    ? "text-emerald-500"
-                    : "text-rose-500"
-                }`}
-              >
-                {selectedReport.netHisob >= 0 ? "+" : ""}
-                ${selectedReport.netHisob}
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const totalFoyda = parseDecimal(selectedReport.totalFoyda);
+            const totalZarar = parseDecimal(selectedReport.totalZarar);
+            const netHisob = parseDecimal(selectedReport.netHisob);
+            return (
+              <div className="grid grid-cols-3 gap-2 rounded-xl border bg-muted/40 p-3 text-center">
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Foyda</p>
+                  <p className="text-sm font-bold text-emerald-500">
+                    +${totalFoyda.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Zarar</p>
+                  <p className="text-sm font-bold text-rose-500">
+                    -${totalZarar.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Net Hisob</p>
+                  <p
+                    className={`text-sm font-bold ${
+                      netHisob >= 0
+                        ? "text-emerald-500"
+                        : "text-rose-500"
+                    }`}
+                  >
+                    {netHisob >= 0 ? "+" : ""}
+                    ${netHisob.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Risk violation alert */}
           {selectedReport.isRiskViolated && (
@@ -129,43 +146,74 @@ export function ReportDetailDialog() {
             </div>
           )}
 
-          {/* Kun yakuniy tahlil (Reflection) */}
-          <div className="space-y-1.5">
+          {/* Kun yakuniy tahlillar & Xulosalar (Key - Value) */}
+          <div className="space-y-2">
             <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              <FileText className="size-3.5" /> Kun yakuniy tahlil
+              <FileText className="size-3.5" /> Kun yakuniy tahlil & Xulosalar
             </h4>
-            <div className="rounded-xl border bg-card p-3.5 text-sm leading-relaxed text-foreground/90">
-              {reflectionValue ? (
-                <p className="whitespace-pre-wrap">{reflectionValue}</p>
-              ) : (
-                <p className="italic text-muted-foreground">
-                  Tahlil matni yozilmagan.
-                </p>
-              )}
-            </div>
+            {reflectionItems.length > 0 ? (
+              <div className="space-y-2">
+                {reflectionItems.map((item) => (
+                  <div
+                    key={item.id || item.templateId}
+                    className="rounded-xl border bg-card p-3 space-y-1.5 text-sm shadow-xs"
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold text-purple-600 dark:text-purple-400">
+                      <span>{item.template?.title || "Tahlil"}:</span>
+                    </div>
+                    {item.value ? (
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                        {item.value}
+                      </p>
+                    ) : (
+                      <p className="italic text-xs text-muted-foreground">
+                        Tahlil matni yozilmagan.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border bg-card p-3 text-xs italic text-muted-foreground">
+                Tahlil matni yozilmagan.
+              </div>
+            )}
           </div>
 
-          {/* Proof Screenshot */}
-          <div className="space-y-1.5">
+          {/* Proof Screenshot(s) (Key - Image) */}
+          <div className="space-y-2">
             <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <ImageIcon className="size-3.5" /> Savdo isboti (Proof Photo)
             </h4>
-            {proofImageUrl ? (
-              <div className="group relative overflow-hidden rounded-xl border bg-muted/30">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={proofImageUrl}
-                  alt="Proof screenshot"
-                  className="max-h-72 w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                />
-                <a
-                  href={proofImageUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium backdrop-blur transition-opacity hover:bg-background"
-                >
-                  <ExternalLink className="size-3" /> To&apos;liq ochish
-                </a>
+            {proofImages.length > 0 && proofImages.some((p) => Boolean(p.value)) ? (
+              <div className="space-y-3">
+                {proofImages.map((proof) => {
+                  if (!proof.value) return null;
+                  return (
+                    <div
+                      key={proof.id || proof.templateId}
+                      className="group relative overflow-hidden rounded-xl border bg-muted/30"
+                    >
+                      <div className="px-3 py-1.5 bg-muted/60 text-xs font-medium text-muted-foreground border-b flex items-center justify-between">
+                        <span>{proof.template?.title || "Savdo isboti"}:</span>
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={proof.value}
+                        alt={proof.template?.title || "Proof screenshot"}
+                        className="max-h-72 w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                      />
+                      <a
+                        href={proof.value}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md bg-background/90 px-2.5 py-1 text-xs font-medium backdrop-blur transition-opacity hover:bg-background shadow-xs"
+                      >
+                        <ExternalLink className="size-3" /> To&apos;liq ochish
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="flex h-24 items-center justify-center rounded-xl border border-dashed bg-muted/20 text-xs text-muted-foreground">

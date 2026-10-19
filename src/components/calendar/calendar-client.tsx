@@ -9,6 +9,8 @@ import { ReportDetailDialog } from "@/components/dashboard/report-detail-dialog"
 import { fetchReportHistory, fetchTaskTemplates } from "@/lib/api";
 import { Role } from "@/types/trading";
 
+import { PageHeader } from "@/components/page-header";
+
 interface CalendarClientProps {
   userId: string;
   role: Role;
@@ -32,16 +34,7 @@ export function CalendarClient({ userId, role }: CalendarClientProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Rejalar & Natijalar Taqvimi
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Oylik reja limitlari va savdo natijalari (WIN / STOP LOSS / MISSED)
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Rejalar" />
 
       {/* Calendar Grid */}
       <CalendarView
