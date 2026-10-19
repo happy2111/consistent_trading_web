@@ -322,7 +322,7 @@ export function AdminPlanDialog() {
         },
         {
           planId,
-          title: "Boshlang'ich kapital",
+          title: "Depozit",
           fieldType: "NUMBER",
           isPrimary: false,
           startDate,
@@ -419,7 +419,7 @@ export function AdminPlanDialog() {
         return;
       }
       if (!initialCapital || !targetProfit) {
-        toast.error("Boshlang'ich kapital va rejadagi umumiy foydani kiriting");
+        toast.error("Boshlang'ich depozit va rejadagi yakuniy balansni kiriting");
         return;
       }
       setCurrentStep(4);
@@ -656,21 +656,21 @@ export function AdminPlanDialog() {
             </div>
           )}
 
-          {/* STEP 3: REJA MAQSADI, INVESTITSIYA VA KUNLIK LIMITLAR */}
+          {/* STEP 3: REJA MAQSADI, DEPOZIT VA KUNLIK LIMITLAR */}
           {currentStep === 3 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
-              {/* 1. Boshlang'ich investitsiya va Maqsadli umumiy foyda */}
+              {/* 1. Boshlang'ich depozit va Maqsadli yakuniy balans */}
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Target className="size-3.5 text-purple-600" />
-                  Investitsiya va Rejadagi Umumiy Maqsad
+                  Depozit va Rejadagi Yakuniy Maqsad
                 </Label>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Boshlang'ich investitsiya (Balans) */}
+                  {/* Boshlang'ich depozit (Balans) */}
                   <div className="space-y-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-3.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Wallet className="size-3.5 text-purple-600" />
-                      Boshlang&apos;ich investitsiya ($)
+                      Boshlang&apos;ich depozit ($)
                     </Label>
                     <Input
                       type="number"
@@ -682,7 +682,7 @@ export function AdminPlanDialog() {
                       required
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Ajratilgan balans yoki depozit (masalan: $400)
+                      Ajratilgan savdo depoziti (masalan: $400)
                     </p>
                   </div>
 

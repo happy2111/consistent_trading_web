@@ -65,7 +65,7 @@ export function PlanDeadlineCountdown({
 
   if (isExpired) {
     return (
-      <div className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-500">
+      <div className="flex items-center gap-1.5 bg-transparent text-xs font-semibold text-rose-500">
         <AlertCircle className="size-3.5" />
         <span>Tugagan ({endDate})</span>
       </div>
@@ -73,9 +73,9 @@ export function PlanDeadlineCountdown({
   }
 
   return (
-    <div className="flex items-center gap-1 sm:gap-1.5 font-mono select-none">
+    <div className="flex items-center gap-1 sm:gap-1.5 font-mono select-none bg-transparent">
       {/* Days */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 min-w-[38px] sm:min-w-[42px]">
+      <div className="flex flex-col items-center justify-center bg-transparent px-1 py-0.5 min-w-[30px] sm:min-w-[34px]">
         <span className="text-xs sm:text-sm font-black text-foreground leading-tight">
           {String(days).padStart(2, "0")}
         </span>
@@ -87,7 +87,7 @@ export function PlanDeadlineCountdown({
       <span className="text-xs sm:text-sm font-bold text-muted-foreground/60">:</span>
 
       {/* Hours */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-border/80 bg-background/80 px-2 py-0.5 min-w-[34px] sm:min-w-[38px]">
+      <div className="flex flex-col items-center justify-center bg-transparent px-1 py-0.5 min-w-[28px] sm:min-w-[32px]">
         <span className="text-xs sm:text-sm font-bold text-foreground leading-tight">
           {String(hours).padStart(2, "0")}
         </span>
@@ -99,7 +99,7 @@ export function PlanDeadlineCountdown({
       <span className="text-xs sm:text-sm font-bold text-muted-foreground/60">:</span>
 
       {/* Minutes */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-border/80 bg-background/80 px-2 py-0.5 min-w-[34px] sm:min-w-[38px]">
+      <div className="flex flex-col items-center justify-center bg-transparent px-1 py-0.5 min-w-[28px] sm:min-w-[32px]">
         <span className="text-xs sm:text-sm font-bold text-foreground leading-tight">
           {String(minutes).padStart(2, "0")}
         </span>
@@ -111,7 +111,7 @@ export function PlanDeadlineCountdown({
       <span className="text-xs sm:text-sm font-bold text-muted-foreground/60">:</span>
 
       {/* Seconds */}
-      <div className="flex flex-col items-center justify-center rounded-lg border border-border/80 bg-background/80 px-2 py-0.5 min-w-[34px] sm:min-w-[38px]">
+      <div className="flex flex-col items-center justify-center bg-transparent px-1 py-0.5 min-w-[28px] sm:min-w-[32px]">
         <span className="text-xs sm:text-sm font-bold text-purple-600 dark:text-purple-400 leading-tight">
           {String(seconds).padStart(2, "0")}
         </span>

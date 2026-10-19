@@ -173,8 +173,7 @@ export function PlanBalanceChart({ plan, reports = [] }: PlanBalanceChartProps) 
   return (
     <Card className="border-border/60 shadow-xs">
       <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
-        <CardTitle className="text-sm font-bold flex items-center gap-2">
-          <TrendingUp className="size-4 text-purple-600" />
+        <CardTitle className="text-sm font-bold">
           Balans Dinamikasi
         </CardTitle>
 

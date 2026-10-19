@@ -36,6 +36,7 @@ export function groupTemplatesIntoPlans(templates: TaskTemplate[]): PlanGroup[] 
     const capTpl = tList.find((t) => {
       const title = t.title.toLowerCase();
       return (
+        title.includes("depozit") ||
         title.includes("kapital") ||
         title.includes("investitsiya") ||
         title.includes("boshlang'ich") ||

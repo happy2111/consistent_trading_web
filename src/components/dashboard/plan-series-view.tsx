@@ -2,15 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  CalendarDays,
-  CircleDollarSign,
-  Clock,
-  Layers,
-  Plus,
-  Target,
-  Wallet,
-} from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { DailyReport, PlanGroup, Role } from "@/types/trading";
 import { Card } from "@/components/ui/card";
 import {
@@ -34,16 +26,6 @@ interface PlanSeriesViewProps {
   reports?: DailyReport[];
   reportsLoading?: boolean;
 }
-
-const WEEKDAY_NAMES: Record<number, string> = {
-  1: "Du",
-  2: "Se",
-  3: "Ch",
-  4: "Pa",
-  5: "Ju",
-  6: "Sh",
-  7: "Ya",
-};
 
 export function PlanSeriesView({
   userId,
@@ -133,22 +115,16 @@ export function PlanSeriesView({
   const {
     startDate,
     endDate,
-    repeatDays,
     initialCapital,
     targetBalance,
-    netProfitTarget,
     totalTradingDays,
   } = selectedPlan;
 
-  const { currentBalance, remainingProfit } = planStats;
-
-  const repeatDaysFormatted = repeatDays
-    .map((d) => WEEKDAY_NAMES[d] || String(d))
-    .join(", ");
+  const { currentBalance } = planStats;
 
   return (
     <div className="space-y-5">
-      {/* 1. CLEAN SELECTOR ONLY (NO WRAPPER BOX, NO NOISE) */}
+      {/* 1. CLEAN SELECTOR ONLY */}
       <div className="flex items-center justify-between">
         <Select
           value={selectedPlanId}
@@ -172,16 +148,13 @@ export function PlanSeriesView({
         </Select>
       </div>
 
-      {/* 2. PLAN PARAMETERS & PERFORMANCE KPI GRID (CLEAN, NO REDUNDANT NOISE) */}
+      {/* 2. PLAN STATISTIC BLOCKS (CLEAN, NO UNNECESSARY ICONS, UNIFIED "DEPOZIT" TERM) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {/* Investitsiya / Boshlang'ich Balans */}
+        {/* Depozit */}
         <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
-              Investitsiya
-            </span>
-            <Wallet className="size-3.5 text-purple-600" />
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            Depozit
+          </span>
           <div className="text-xl font-bold tracking-tight text-foreground">
             ${initialCapital.toLocaleString()}
           </div>
@@ -189,12 +162,9 @@ export function PlanSeriesView({
 
         {/* Maqsadli Balans */}
         <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
-              Maqsadli Balans
-            </span>
-            <Target className="size-3.5 text-emerald-500" />
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            Maqsadli Balans
+          </span>
           <div className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
             ${targetBalance.toLocaleString()}
           </div>
@@ -202,12 +172,9 @@ export function PlanSeriesView({
 
         {/* Joriy Balans */}
         <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
-              Joriy Balans
-            </span>
-            <CircleDollarSign className="size-3.5 text-indigo-500" />
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            Joriy Balans
+          </span>
           <div
             className={`text-xl font-bold tracking-tight ${
               currentBalance >= initialCapital ? "text-foreground" : "text-rose-500"
@@ -219,26 +186,22 @@ export function PlanSeriesView({
 
         {/* Savdo Kunlari */}
         <div className="rounded-xl border border-border/60 bg-card p-3.5 space-y-1 shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
-              Savdo Tartibi
-            </span>
-            <CalendarDays className="size-3.5 text-purple-600" />
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+            Savdo Kunlari
+          </span>
           <div className="text-xl font-bold tracking-tight text-foreground">
             {totalTradingDays} kun
           </div>
         </div>
       </div>
 
-      {/* 3. LINE CHART (BALANCE TRAJECTORY TOWARDS TARGET) */}
+      {/* 3. LINE CHART */}
       <PlanBalanceChart plan={selectedPlan} reports={planReports} />
 
       {/* 4. DAILY REPORTS TABLE FOR THIS PLAN */}
       <div className="space-y-2 pt-1">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold tracking-tight flex items-center gap-2">
-            <Clock className="size-4 text-purple-600" />
+          <h3 className="text-sm font-bold tracking-tight">
             Kunlik Savdo Hisobotlari
           </h3>
           <span className="text-xs text-muted-foreground font-medium">
