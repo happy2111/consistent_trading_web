@@ -21,49 +21,81 @@ export function useChatSocket(userId: string, currentChatId?: string) {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 1. Persistent Socket Connection per userId
   useEffect(() => {
     if (!userId) return;
 
-    const wsUrl =
+    const baseUrl =
       process.env.NEXT_PUBLIC_WS_URL ||
-      process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws") ||
-      "http://localhost:3000";
+      process.env.NEXT_PUBLIC_API_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
 
-    const socket = io(`${wsUrl}/chat`, {
+    const socket = io(`${baseUrl}/chat`, {
       auth: { userId },
+      query: { userId },
       transports: ["websocket", "polling"],
-      reconnectionAttempts: 5,
+      reconnection: true,
+      reconnectionAttempts: 25,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;
 
-    // Join room when active
-    if (currentChatId) {
-      socket.emit("join_room", { chatId: currentChatId });
-    }
-
-    // New message received
-    socket.on("new_message", (msg: ChatMessage) => {
-      setMessages((prev) => {
-        // Prevent duplicate append
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-
-      // If user is currently looking at this chat, acknowledge read
-      if (msg.chatId === currentChatId && msg.senderId !== userId) {
-        socket.emit("message_read", {
-          chatId: currentChatId,
-          messageIds: [msg.id],
-        });
+    socket.on("connect", () => {
+      // Upon connection, if a room is already chosen, join it
+      if (currentChatId) {
+        socket.emit("join_room", { chatId: currentChatId });
       }
     });
 
-    // Message sent ACK
+    // Receive initial online users list
+    socket.on("online_users_list", (data: { userIds: string[] }) => {
+      if (data?.userIds) {
+        setOnlineUsers(new Set(data.userIds));
+      }
+    });
+
+    // Real-time presence updates
+    socket.on(
+      "user_presence",
+      (data: { userId: string; status: "ONLINE" | "OFFLINE" }) => {
+        setOnlineUsers((prev) => {
+          const next = new Set(prev);
+          if (data.status === "ONLINE") {
+            next.add(data.userId);
+          } else {
+            next.delete(data.userId);
+          }
+          return next;
+        });
+      },
+    );
+
+    // New message broadcast
+    socket.on("new_message", (msg: ChatMessage) => {
+      setMessages((prev) => {
+        // If we have a temporary optimistic message with matching content, replace it
+        const tempIdx = prev.findIndex(
+          (m) => m.id.startsWith("temp-") && m.content === msg.content,
+        );
+        if (tempIdx !== -1) {
+          const updated = [...prev];
+          updated[tempIdx] = msg;
+          return updated;
+        }
+
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    });
+
+    // Message ACK from server
     socket.on("message_ack", (ack: { tempId: string; messageId: string }) => {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === ack.tempId ? { ...m, id: ack.messageId, status: "DELIVERED" } : m,
+          m.id === ack.tempId
+            ? { ...m, id: ack.messageId, status: "DELIVERED" }
+            : m,
         ),
       );
     });
@@ -93,7 +125,7 @@ export function useChatSocket(userId: string, currentChatId?: string) {
     socket.on(
       "user_typing",
       (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => {
-        if (data.chatId !== currentChatId || data.userId === userId) return;
+        if (data.userId === userId) return;
 
         setTypingUsers((prev) => {
           const next = { ...prev };
@@ -107,35 +139,34 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       },
     );
 
-    // Online presence
-    socket.on(
-      "user_presence",
-      (data: { userId: string; status: "ONLINE" | "OFFLINE" }) => {
-        setOnlineUsers((prev) => {
-          const next = new Set(prev);
-          if (data.status === "ONLINE") {
-            next.add(data.userId);
-          } else {
-            next.delete(data.userId);
-          }
-          return next;
-        });
-      },
-    );
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [userId]);
+
+  // 2. Join / Leave Room when currentChatId changes (WITHOUT disconnecting socket!)
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !currentChatId) return;
+
+    if (socket.connected) {
+      socket.emit("join_room", { chatId: currentChatId });
+    }
 
     return () => {
-      if (currentChatId) {
+      if (socket.connected) {
         socket.emit("leave_room", { chatId: currentChatId });
       }
-      socket.disconnect();
     };
-  }, [userId, currentChatId]);
+  }, [currentChatId]);
 
   // Handle typing with 2.5s debounce
   const sendTyping = useCallback(
     (userName: string) => {
-      if (!socketRef.current || !currentChatId) return;
-      socketRef.current.emit("typing_start", { chatId: currentChatId, userName });
+      const socket = socketRef.current;
+      if (!socket || !currentChatId) return;
+      socket.emit("typing_start", { chatId: currentChatId, userName });
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
@@ -148,7 +179,8 @@ export function useChatSocket(userId: string, currentChatId?: string) {
   // Send message
   const sendMessage = useCallback(
     (content: string, senderName: string) => {
-      if (!socketRef.current || !currentChatId || !content.trim()) return;
+      const socket = socketRef.current;
+      if (!socket || !currentChatId || !content.trim()) return;
 
       const tempId = `temp-${Date.now()}`;
       const tempMsg: ChatMessage = {
@@ -166,14 +198,14 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       setMessages((prev) => [...prev, tempMsg]);
 
       // Emit to server
-      socketRef.current.emit("send_message", {
+      socket.emit("send_message", {
         chatId: currentChatId,
         content: content.trim(),
         tempId,
       });
 
       // Stop typing
-      socketRef.current.emit("typing_stop", { chatId: currentChatId });
+      socket.emit("typing_stop", { chatId: currentChatId });
     },
     [currentChatId, userId],
   );

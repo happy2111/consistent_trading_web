@@ -185,6 +185,19 @@ export async function createDirectChat(userId: string, targetUserId: string) {
   return data;
 }
 
+export async function createGroupChat(
+  userId: string,
+  name: string,
+  memberUserIds: string[],
+) {
+  const { data } = await apiClient.post(
+    '/api/chat/rooms/group',
+    { name, memberUserIds },
+    { headers: { 'x-user-id': userId } },
+  );
+  return data;
+}
+
 export async function fetchChatMessages(chatId: string, cursor?: string, limit = 30) {
   const { data } = await apiClient.get(`/api/chat/rooms/${chatId}/messages`, {
     params: { cursor, limit },
