@@ -19,11 +19,6 @@ import {
   ChevronUp,
   Plus,
   Trash2,
-  TrendingDown,
-  TrendingUp,
-  Hash,
-  Wallet,
-  Target,
 } from "lucide-react";
 import {
   Dialog,
@@ -656,111 +651,75 @@ export function AdminPlanDialog() {
             </div>
           )}
 
-          {/* STEP 3: REJA MAQSADI, DEPOZIT VA KUNLIK LIMITLAR */}
+          {/* STEP 3: DEPOZIT VA KUNLIK LIMITLAR (MINIMALIST & CLEAN) */}
           {currentStep === 3 && (
-            <div className="space-y-5 animate-in fade-in-50 duration-200">
-              {/* 1. Boshlang'ich depozit va Maqsadli yakuniy balans */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Target className="size-3.5 text-purple-600" />
-                  Depozit va Rejadagi Yakuniy Maqsad
-                </Label>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Boshlang'ich depozit (Balans) */}
-                  <div className="space-y-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-3.5">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                      <Wallet className="size-3.5 text-purple-600" />
-                      Boshlang&apos;ich depozit ($)
-                    </Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={initialCapital}
-                      onChange={(e) => setInitialCapital(e.target.value)}
-                      placeholder="400"
-                      className="h-10 text-sm font-bold bg-background/80"
-                      required
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Ajratilgan savdo depoziti (masalan: $400)
-                    </p>
-                  </div>
+            <div className="space-y-4 animate-in fade-in-50 duration-200">
+              {/* 1. Depozit va Maqsadli yakuniy balans */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Boshlang&apos;ich depozit ($)
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={initialCapital}
+                    onChange={(e) => setInitialCapital(e.target.value)}
+                    placeholder="400"
+                    className="h-10 text-sm font-semibold"
+                    required
+                  />
+                </div>
 
-                  {/* Rejadagi yakuniy balans maqsadi */}
-                  <div className="space-y-1.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
-                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      <TrendingUp className="size-3.5" />
-                      Rejadagi yakuniy balans maqsadi ($)
-                    </Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={targetProfit}
-                      onChange={(e) => setTargetProfit(e.target.value)}
-                      placeholder="1000"
-                      className="h-10 text-sm font-bold bg-background/80"
-                      required
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Kutilayotgan yakuniy balans (masalan: $1000)
-                    </p>
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Maqsadli yakuniy balans ($)
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={targetProfit}
+                    onChange={(e) => setTargetProfit(e.target.value)}
+                    placeholder="1000"
+                    className="h-10 text-sm font-semibold"
+                    required
+                  />
                 </div>
               </div>
 
-              {/* 2. Reja natijasi va hisob-kitob kartasi */}
+              {/* 2. Reja natijasi (Ixcham va toza) */}
               {(() => {
                 const cap = parseFloat(initialCapital) || 0;
                 const target = parseFloat(targetProfit) || 0;
-                // Target balance is the target itself (e.g. $1000), deposit is accounted inside it!
                 const totalTarget = target > 0 ? target : cap;
                 const netProfitNeeded = Math.max(totalTarget - cap, 0);
                 const days = tradingDayStats.tradingDays || 1;
                 const dailyAvg = (netProfitNeeded / days).toFixed(2);
-                const roi = cap > 0 ? ((netProfitNeeded / cap) * 100).toFixed(0) : 0;
+
+                if (netProfitNeeded <= 0) return null;
 
                 return (
-                  <div className="rounded-2xl border bg-muted/30 p-3.5 space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-muted-foreground font-medium">
-                      <span>Savdo davri:</span>
-                      <span className="font-semibold text-foreground">{days} ta savdo kuni</span>
-                    </div>
-                    <div className="flex items-center justify-between text-muted-foreground font-medium">
-                      <span>Kutilayotgan yakuniy balans:</span>
-                      <span className="font-bold text-foreground text-sm">
-                        ${totalTarget.toLocaleString()}{" "}
-                        {netProfitNeeded > 0 && (
-                          <span className="text-[11px] text-emerald-500 font-semibold">(+{roi}%)</span>
-                        )}
+                  <div className="flex items-center justify-between rounded-xl bg-muted/40 px-3.5 py-2 text-xs">
+                    <span className="text-muted-foreground">Kutilayotgan sof foyda:</span>
+                    <span className="font-bold text-emerald-500">
+                      +${netProfitNeeded.toLocaleString()}{" "}
+                      <span className="text-muted-foreground font-normal">
+                        (~${dailyAvg} / kun)
                       </span>
-                    </div>
-                    <div className="flex items-center justify-between text-muted-foreground font-medium">
-                      <span>Rejadagi sof foyda (o&apos;sish):</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        +${netProfitNeeded.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-border/60 text-muted-foreground font-medium">
-                      <span>Kunlik o&apos;rtacha foyda maqsadi:</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        +${dailyAvg} / kun
-                      </span>
-                    </div>
+                    </span>
                   </div>
                 );
               })()}
 
               {/* 3. Kunlik savdo limitlari */}
               <div className="space-y-2 pt-1">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Kunlik savdo limitlari (Daily Limits)
-                </Label>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {/* Maksimal zarar */}
+                <span className="text-xs font-semibold text-muted-foreground block">
+                  Kunlik Limitlar
+                </span>
+                <div className="grid grid-cols-3 gap-2.5">
                   <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1 text-xs font-semibold text-rose-500">
-                      <TrendingDown className="size-3.5" />
-                      Kunlik max zarar ($)
+                    <Label className="text-xs text-muted-foreground font-medium">
+                      Max zarar ($)
                     </Label>
                     <Input
                       type="number"
@@ -768,15 +727,14 @@ export function AdminPlanDialog() {
                       value={maxZarar}
                       onChange={(e) => setMaxZarar(e.target.value)}
                       placeholder="100"
+                      className="h-9 text-sm font-semibold"
                       required
                     />
                   </div>
 
-                  {/* Maksimal foyda */}
                   <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
-                      <TrendingUp className="size-3.5" />
-                      Kunlik max foyda ($)
+                    <Label className="text-xs text-muted-foreground font-medium">
+                      Max foyda ($)
                     </Label>
                     <Input
                       type="number"
@@ -784,15 +742,14 @@ export function AdminPlanDialog() {
                       value={maxFoyda}
                       onChange={(e) => setMaxFoyda(e.target.value)}
                       placeholder="300"
+                      className="h-9 text-sm font-semibold"
                       required
                     />
                   </div>
 
-                  {/* Kunlik maksimal trade soni */}
                   <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1 text-xs font-semibold text-indigo-500">
-                      <Hash className="size-3.5" />
-                      Kunlik max trade
+                    <Label className="text-xs text-muted-foreground font-medium">
+                      Max trade
                     </Label>
                     <Input
                       type="number"
@@ -800,6 +757,7 @@ export function AdminPlanDialog() {
                       value={maxTrades}
                       onChange={(e) => setMaxTrades(e.target.value)}
                       placeholder="3"
+                      className="h-9 text-sm font-semibold"
                       required
                     />
                   </div>
