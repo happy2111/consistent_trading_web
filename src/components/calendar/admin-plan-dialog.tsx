@@ -22,6 +22,8 @@ import {
   TrendingDown,
   TrendingUp,
   Hash,
+  Wallet,
+  Target,
 } from "lucide-react";
 import {
   Dialog,
@@ -93,7 +95,9 @@ export function AdminPlanDialog() {
   const [londonSession, setLondonSession] = React.useState(true);
   const [newYorkSession, setNewYorkSession] = React.useState(true);
 
-  // Limits
+  // Limits & Targets
+  const [initialCapital, setInitialCapital] = React.useState("400");
+  const [targetProfit, setTargetProfit] = React.useState("1000");
   const [maxZarar, setMaxZarar] = React.useState("100");
   const [maxFoyda, setMaxFoyda] = React.useState("300");
   const [maxTrades, setMaxTrades] = React.useState("3");
@@ -310,6 +314,24 @@ export function AdminPlanDialog() {
           defaultValue: maxTrades,
         },
         {
+          title: "Boshlang'ich kapital",
+          fieldType: "NUMBER",
+          isPrimary: false,
+          startDate,
+          endDate,
+          repeatDays,
+          defaultValue: initialCapital,
+        },
+        {
+          title: "Maqsadli umumiy foyda",
+          fieldType: "NUMBER",
+          isPrimary: false,
+          startDate,
+          endDate,
+          repeatDays,
+          defaultValue: targetProfit,
+        },
+        {
           title: "London Session",
           fieldType: "BOOLEAN",
           isPrimary: false,
@@ -382,6 +404,10 @@ export function AdminPlanDialog() {
     } else if (currentStep === 3) {
       if (!maxZarar || !maxFoyda) {
         toast.error("Maksimal zarar va foyda limitlarini kiriting");
+        return;
+      }
+      if (!initialCapital || !targetProfit) {
+        toast.error("Boshlang'ich kapital va rejadagi umumiy foydani kiriting");
         return;
       }
       setCurrentStep(4);
@@ -618,56 +644,143 @@ export function AdminPlanDialog() {
             </div>
           )}
 
-          {/* STEP 3: ASOSIY LIMITLAR */}
+          {/* STEP 3: REJA MAQSADI, INVESTITSIYA VA KUNLIK LIMITLAR */}
           {currentStep === 3 && (
             <div className="space-y-5 animate-in fade-in-50 duration-200">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                {/* Maksimal zarar */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1 text-xs font-semibold text-rose-500">
-                    <TrendingDown className="size-3.5" />
-                    Maksimal zarar ($)
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={maxZarar}
-                    onChange={(e) => setMaxZarar(e.target.value)}
-                    placeholder="100"
-                    required
-                  />
-                </div>
+              {/* 1. Boshlang'ich investitsiya va Maqsadli umumiy foyda */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Target className="size-3.5 text-purple-600" />
+                  Investitsiya va Rejadagi Umumiy Maqsad
+                </Label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Boshlang'ich investitsiya (Balans) */}
+                  <div className="space-y-1.5 rounded-2xl border border-purple-500/20 bg-purple-500/5 p-3.5">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Wallet className="size-3.5 text-purple-600" />
+                      Boshlang&apos;ich investitsiya ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={initialCapital}
+                      onChange={(e) => setInitialCapital(e.target.value)}
+                      placeholder="400"
+                      className="h-10 text-sm font-bold bg-background/80"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Ajratilgan balans yoki depozit (masalan: $400)
+                    </p>
+                  </div>
 
-                {/* Maksimal foyda */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
-                    <TrendingUp className="size-3.5" />
-                    Maksimal foyda ($)
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={maxFoyda}
-                    onChange={(e) => setMaxFoyda(e.target.value)}
-                    placeholder="300"
-                    required
-                  />
+                  {/* Rejadagi umumiy foyda (Target Profit) */}
+                  <div className="space-y-1.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
+                    <Label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <TrendingUp className="size-3.5" />
+                      Rejadagi umumiy foyda ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={targetProfit}
+                      onChange={(e) => setTargetProfit(e.target.value)}
+                      placeholder="1000"
+                      className="h-10 text-sm font-bold bg-background/80"
+                      required
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {tradingDayStats.tradingDays} savdo kunidagi umumiy maqsad (masalan: $1000)
+                    </p>
+                  </div>
                 </div>
+              </div>
 
-                {/* Kunlik maksimal trade soni */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1 text-xs font-semibold text-indigo-500">
-                    <Hash className="size-3.5" />
-                    Kunlik maksimal trade soni
-                  </Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={maxTrades}
-                    onChange={(e) => setMaxTrades(e.target.value)}
-                    placeholder="3"
-                    required
-                  />
+              {/* 2. Reja natijasi va hisob-kitob kartasi */}
+              {(() => {
+                const cap = parseFloat(initialCapital) || 0;
+                const prof = parseFloat(targetProfit) || 0;
+                const totalTarget = cap + prof;
+                const days = tradingDayStats.tradingDays || 1;
+                const dailyAvg = (prof / days).toFixed(2);
+                const roi = cap > 0 ? ((prof / cap) * 100).toFixed(0) : 0;
+
+                return (
+                  <div className="rounded-2xl border bg-muted/30 p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-muted-foreground font-medium">
+                      <span>Savdo davri:</span>
+                      <span className="font-semibold text-foreground">{days} ta savdo kuni</span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground font-medium">
+                      <span>Kutilayotgan yakuniy balans:</span>
+                      <span className="font-bold text-foreground text-sm">
+                        ${totalTarget.toLocaleString()}{" "}
+                        <span className="text-[11px] text-emerald-500 font-semibold">(+{roi}%)</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-border/60 text-muted-foreground font-medium">
+                      <span>Kunlik o&apos;rtacha foyda maqsadi:</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        +${dailyAvg} / kun
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 3. Kunlik savdo limitlari */}
+              <div className="space-y-2 pt-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Kunlik savdo limitlari (Daily Limits)
+                </Label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {/* Maksimal zarar */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1 text-xs font-semibold text-rose-500">
+                      <TrendingDown className="size-3.5" />
+                      Kunlik max zarar ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={maxZarar}
+                      onChange={(e) => setMaxZarar(e.target.value)}
+                      placeholder="100"
+                      required
+                    />
+                  </div>
+
+                  {/* Maksimal foyda */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
+                      <TrendingUp className="size-3.5" />
+                      Kunlik max foyda ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={maxFoyda}
+                      onChange={(e) => setMaxFoyda(e.target.value)}
+                      placeholder="300"
+                      required
+                    />
+                  </div>
+
+                  {/* Kunlik maksimal trade soni */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1 text-xs font-semibold text-indigo-500">
+                      <Hash className="size-3.5" />
+                      Kunlik max trade
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={maxTrades}
+                      onChange={(e) => setMaxTrades(e.target.value)}
+                      placeholder="3"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
             </div>

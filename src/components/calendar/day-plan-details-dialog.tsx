@@ -192,6 +192,10 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
                           <span className="text-sm font-bold text-rose-500">
                             -${currentVal || "0"}
                           </span>
+                        ) : t.title.toLowerCase().includes("kapital") || t.title.toLowerCase().includes("investitsiya") ? (
+                          <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                            ${currentVal || "0"}
+                          </span>
                         ) : t.title.toLowerCase().includes("foyda") ? (
                           <span className="text-sm font-bold text-emerald-500">
                             +${currentVal || "0"}

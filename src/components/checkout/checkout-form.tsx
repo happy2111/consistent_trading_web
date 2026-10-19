@@ -110,6 +110,13 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
         title.includes("maksimal zarar") ||
         title.includes("maksimal foyda") ||
         title.includes("maksimal trade") ||
+        title.includes("boshlang'ich kapital") ||
+        title.includes("boshlangich kapital") ||
+        title.includes("kapital") ||
+        title.includes("investitsiya") ||
+        title.includes("maqsadli umumiy foyda") ||
+        title.includes("rejadagi umumiy foyda") ||
+        title.includes("maqsadli foyda") ||
         (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha")) ||
         (title.includes("zarar") && !title.includes("maksimal")) ||
         title.includes("fact trade") ||
@@ -147,7 +154,14 @@ export function CheckoutForm({ userId }: CheckoutFormProps) {
       const title = v.template?.title?.toLowerCase() || "";
       const val = v.value || v.template?.defaultValue || "";
 
-      if (title.includes("foyda") && !title.includes("qo'shimcha") && !title.includes("qoshimcha") && !title.includes("maksimal")) {
+      if (
+        title.includes("foyda") &&
+        !title.includes("qo'shimcha") &&
+        !title.includes("qoshimcha") &&
+        !title.includes("maksimal") &&
+        !title.includes("maqsadli") &&
+        !title.includes("umumiy")
+      ) {
         if (v.value && !factFoyda) setFactFoyda(v.value);
       } else if (title.includes("zarar") && !title.includes("maksimal")) {
         if (v.value && !factZarar) setFactZarar(v.value);

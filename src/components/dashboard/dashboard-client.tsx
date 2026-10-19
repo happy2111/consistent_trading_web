@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { MetricCards } from "./metric-cards";
+import { PlanProgressCard } from "./plan-progress-card";
 import { PnLChart } from "./pnl-chart";
 import { HistoryTable } from "./history-table";
 import { ReportDetailDialog } from "./report-detail-dialog";
@@ -39,6 +40,9 @@ export function DashboardClient({ userId, role }: DashboardClientProps) {
   return (
     <div className="space-y-6">
       <PageHeader title="Asosiy" />
+
+      {/* Plan Target, Capital & Hisob Progress */}
+      <PlanProgressCard reports={reports} />
 
       {/* 1. KPI Metric Cards */}
       <MetricCards stats={stats} isLoading={statsLoading} />
