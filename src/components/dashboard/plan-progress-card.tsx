@@ -72,9 +72,13 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
       ? parseFloat(capitalTpl.defaultValue) || 400
       : 400;
 
-    const targetProfit = targetTpl?.defaultValue
+    const rawTarget = targetTpl?.defaultValue
       ? parseFloat(targetTpl.defaultValue) || 1000
       : 1000;
+
+    // Target balance is the target itself (e.g. $1000). Deposit is accounted within it!
+    const targetBalance = rawTarget > 0 ? rawTarget : initialCapital;
+    const netProfitTarget = Math.max(targetBalance - initialCapital, 0);
 
     // Calculate total scheduled trading days in the plan interval
     let totalTradingDays = 0;
@@ -102,8 +106,9 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
       endDate,
       repeatDays,
       initialCapital,
-      targetProfit,
-      targetBalance: initialCapital + targetProfit,
+      targetProfit: rawTarget,
+      targetBalance,
+      netProfitTarget,
       totalTradingDays,
     };
   }, [templates]);
@@ -125,8 +130,8 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
     startDate,
     endDate,
     initialCapital,
-    targetProfit,
     targetBalance,
+    netProfitTarget,
     totalTradingDays,
   } = planInfo;
 
@@ -144,15 +149,19 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
   );
 
   const currentBalance = initialCapital + accumulatedProfit;
+  const isGoalReached = currentBalance >= targetBalance;
+
+  // Progress towards target:
   const progressPct =
-    targetProfit > 0 ? (accumulatedProfit / targetProfit) * 100 : 0;
+    netProfitTarget > 0
+      ? (accumulatedProfit / netProfitTarget) * 100
+      : (currentBalance / targetBalance) * 100;
   const clampedProgress = Math.min(Math.max(progressPct, 0), 100);
-  const remainingProfit = Math.max(targetProfit - accumulatedProfit, 0);
+  const remainingProfit = Math.max(targetBalance - currentBalance, 0);
   const completedDaysCount = completedReports.length;
   const remainingDaysCount = Math.max(totalTradingDays - completedDaysCount, 0);
 
   const isProfit = accumulatedProfit >= 0;
-  const isGoalReached = accumulatedProfit >= targetProfit;
 
   return (
     <Card className="relative overflow-hidden border-purple-500/30 bg-gradient-to-br from-card via-card to-purple-500/5 shadow-xs">
@@ -223,7 +232,7 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
             </p>
           </div>
 
-          {/* 2. Rejadagi Umumiy Foyda */}
+          {/* 2. Rejadagi Yakuniy Balans Maqsadi */}
           <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-[11px] font-medium uppercase tracking-wider">
@@ -232,10 +241,12 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
               <Target className="size-3.5 text-emerald-500" />
             </div>
             <div className="text-lg sm:text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-              +${targetProfit.toLocaleString()}
+              ${targetBalance.toLocaleString()}
             </div>
             <p className="text-[10px] text-muted-foreground truncate">
-              Kutilayotgan yakuniy: ${targetBalance.toLocaleString()}
+              {netProfitTarget > 0
+                ? `Sof foyda: +$${netProfitTarget.toLocaleString()}`
+                : "Kutilayotgan yakuniy balans"}
             </p>
           </div>
 
@@ -295,9 +306,12 @@ export function PlanProgressCard({ reports = [] }: PlanProgressCardProps) {
         <div className="space-y-1.5 pt-1">
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground font-medium flex items-center gap-1.5">
-              <span>Foyda maqsadi:</span>
+              <span>Balans maqsadi:</span>
               <span className="font-bold text-foreground">
-                ${accumulatedProfit > 0 ? accumulatedProfit.toFixed(2) : "0.00"} / ${targetProfit.toLocaleString()}
+                ${currentBalance.toFixed(2)} / ${targetBalance.toLocaleString()}
+              </span>
+              <span className="text-[11px] text-muted-foreground font-normal">
+                ({accumulatedProfit >= 0 ? "+" : ""}${accumulatedProfit.toFixed(2)})
               </span>
             </span>
             <span className="font-semibold text-muted-foreground">

@@ -674,11 +674,11 @@ export function AdminPlanDialog() {
                     </p>
                   </div>
 
-                  {/* Rejadagi umumiy foyda (Target Profit) */}
+                  {/* Rejadagi yakuniy balans maqsadi */}
                   <div className="space-y-1.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                       <TrendingUp className="size-3.5" />
-                      Rejadagi umumiy foyda ($)
+                      Rejadagi yakuniy balans maqsadi ($)
                     </Label>
                     <Input
                       type="number"
@@ -690,7 +690,7 @@ export function AdminPlanDialog() {
                       required
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      {tradingDayStats.tradingDays} savdo kunidagi umumiy maqsad (masalan: $1000)
+                      Kutilayotgan yakuniy balans (masalan: $1000)
                     </p>
                   </div>
                 </div>
@@ -699,11 +699,13 @@ export function AdminPlanDialog() {
               {/* 2. Reja natijasi va hisob-kitob kartasi */}
               {(() => {
                 const cap = parseFloat(initialCapital) || 0;
-                const prof = parseFloat(targetProfit) || 0;
-                const totalTarget = cap + prof;
+                const target = parseFloat(targetProfit) || 0;
+                // Target balance is the target itself (e.g. $1000), deposit is accounted inside it!
+                const totalTarget = target > 0 ? target : cap;
+                const netProfitNeeded = Math.max(totalTarget - cap, 0);
                 const days = tradingDayStats.tradingDays || 1;
-                const dailyAvg = (prof / days).toFixed(2);
-                const roi = cap > 0 ? ((prof / cap) * 100).toFixed(0) : 0;
+                const dailyAvg = (netProfitNeeded / days).toFixed(2);
+                const roi = cap > 0 ? ((netProfitNeeded / cap) * 100).toFixed(0) : 0;
 
                 return (
                   <div className="rounded-2xl border bg-muted/30 p-3.5 space-y-2 text-xs">
@@ -715,7 +717,15 @@ export function AdminPlanDialog() {
                       <span>Kutilayotgan yakuniy balans:</span>
                       <span className="font-bold text-foreground text-sm">
                         ${totalTarget.toLocaleString()}{" "}
-                        <span className="text-[11px] text-emerald-500 font-semibold">(+{roi}%)</span>
+                        {netProfitNeeded > 0 && (
+                          <span className="text-[11px] text-emerald-500 font-semibold">(+{roi}%)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-muted-foreground font-medium">
+                      <span>Rejadagi sof foyda (o&apos;sish):</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        +${netProfitNeeded.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-border/60 text-muted-foreground font-medium">
