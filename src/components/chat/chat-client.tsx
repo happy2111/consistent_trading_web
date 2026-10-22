@@ -30,6 +30,7 @@ interface ChatClientProps {
   userName: string;
   userEmail?: string | null;
   userImage?: string | null;
+  isAdmin?: boolean;
 }
 
 interface ChatRoom {
@@ -40,6 +41,7 @@ interface ChatRoom {
   lastMessage?: string | null;
   lastMessageTime?: string | null;
   participantsCount?: number;
+  participantIds?: string[];
 }
 
 interface ChatUser {
@@ -86,6 +88,7 @@ export function ChatClient({
   userId,
   userName,
   userImage,
+  isAdmin = false,
 }: ChatClientProps) {
   const [selectedChatId, setSelectedChatId] = React.useState<string>("");
   const [inputText, setInputText] = React.useState("");
@@ -125,6 +128,7 @@ export function ChatClient({
     onlineUsers,
     sendMessage,
     sendTyping,
+    stopTyping,
   } = useChatSocket(userId, selectedChatId);
 
   // 4. Load initial messages when room changes
@@ -211,8 +215,13 @@ export function ChatClient({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputText(e.target.value);
-    sendTyping(userName);
+    const val = e.target.value;
+    setInputText(val);
+    if (val.trim()) {
+      sendTyping(userName);
+    } else {
+      stopTyping();
+    }
   };
 
   const handleSend = (e: React.FormEvent) => {
@@ -249,7 +258,7 @@ export function ChatClient({
   // Handle Group creation
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim() || isSubmittingGroup) return;
+    if (!isAdmin || !groupName.trim() || isSubmittingGroup) return;
 
     setIsSubmittingGroup(true);
     try {
@@ -369,14 +378,14 @@ export function ChatClient({
     : "CT";
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0e0e10] text-[#e1e1e1] select-none font-sans p-0 sm:p-2.5 gap-2.5">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#000000] text-[#f1f1f1] select-none font-sans p-0 sm:p-2.5 gap-2.5">
       {/* =========================================================================
           LEFT SIDEBAR (Telegram Web Style)
          ========================================================================= */}
       <aside
         className={`${
           showMobileList ? "flex" : "hidden"
-        } md:flex flex-col w-full md:w-[350px] lg:w-[380px] shrink-0 bg-[#1c1c1f] rounded-none sm:rounded-3xl border border-[#2b2b2f]/60 shadow-2xl overflow-hidden z-20`}
+        } md:flex flex-col w-full md:w-[350px] lg:w-[380px] shrink-0 bg-[#190a09] rounded-none sm:rounded-3xl border border-[#400907]/60 shadow-2xl overflow-hidden z-20`}
       >
         {/* Top Header: Back to Dashboard Arrow, Search Input, My Avatar */}
         <div className="p-3 pb-2 flex items-center gap-2.5 relative">
@@ -384,26 +393,26 @@ export function ChatClient({
           <Link
             href="/"
             title="Dashboardga qaytish"
-            className="size-9 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            className="size-9 rounded-full flex items-center justify-center text-[#a88a89] hover:text-white hover:bg-[#290a08] transition-colors shrink-0"
           >
             <ArrowLeft className="size-5" />
           </Link>
 
           {/* Search Input Bar (Telegram Pill) */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#777777]" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7271]" />
             <input
               type="text"
               placeholder="Qidiruv..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 rounded-full bg-[#27272a] hover:bg-[#2e2e32] focus:bg-[#2e2e32] focus:outline-hidden pl-9 pr-8 text-xs text-white placeholder-[#777777] transition-colors"
+              className="w-full h-9 rounded-full bg-[#290a08]/80 hover:bg-[#290a08] focus:bg-[#290a08] border border-[#400907]/60 focus:border-[#8c1511]/50 focus:outline-hidden pl-9 pr-8 text-xs text-white placeholder-[#8a7271] transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[#777777] hover:text-white flex items-center justify-center"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[#8a7271] hover:text-white flex items-center justify-center"
               >
                 <X className="size-3.5" />
               </button>
@@ -424,12 +433,12 @@ export function ChatClient({
                 {myInitials}
               </AvatarFallback>
             </Avatar>
-            <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-[#4fae4e] ring-2 ring-[#1c1c1f]" />
+            <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-[#4fae4e] ring-2 ring-[#190a09]" />
           </div>
         </div>
 
         {/* Tabs: Shaxsiy and Guruhlar (in Uzbek, strictly 2 tabs) */}
-        <div className="px-3 py-1 flex items-center justify-between border-b border-[#2b2b2f]/50">
+        <div className="px-3 py-1 flex items-center justify-between border-b border-[#400907]/50">
           <div className="flex items-center gap-2">
             {/* Tab 1: Shaxsiy */}
             <button
@@ -437,16 +446,16 @@ export function ChatClient({
               onClick={() => setActiveTab("direct")}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "direct"
-                  ? "bg-[#8774e1] text-white shadow-md font-bold"
-                  : "text-[#aaaaaa] hover:text-white hover:bg-white/5"
+                  ? "bg-[#8c1511] text-white shadow-md font-bold"
+                  : "text-[#b39e9d] hover:text-white hover:bg-[#290a08]/60"
               }`}
             >
               <span>Shaxsiy</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   activeTab === "direct"
-                    ? "bg-white/20 text-white"
-                    : "bg-[#2c2c30] text-[#888888]"
+                    ? "bg-black/30 text-white"
+                    : "bg-[#290a08] text-[#a88a89]"
                 }`}
               >
                 {unifiedDirectList.length}
@@ -459,16 +468,16 @@ export function ChatClient({
               onClick={() => setActiveTab("group")}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "group"
-                  ? "bg-[#8774e1] text-white shadow-md font-bold"
-                  : "text-[#aaaaaa] hover:text-white hover:bg-white/5"
+                  ? "bg-[#8c1511] text-white shadow-md font-bold"
+                  : "text-[#b39e9d] hover:text-white hover:bg-[#290a08]/60"
               }`}
             >
               <span>Guruhlar</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   activeTab === "group"
-                    ? "bg-white/20 text-white"
-                    : "bg-[#2c2c30] text-[#888888]"
+                    ? "bg-black/30 text-white"
+                    : "bg-[#290a08] text-[#a88a89]"
                 }`}
               >
                 {groupRooms.length}
@@ -476,13 +485,13 @@ export function ChatClient({
             </button>
           </div>
 
-          {/* Create Group Button */}
-          {activeTab === "group" && (
+          {/* Create Group Button (Admin only) */}
+          {activeTab === "group" && isAdmin && (
             <button
               type="button"
               onClick={() => setIsGroupModalOpen(true)}
               title="Yangi guruh yaratish"
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#8774e1]/15 hover:bg-[#8774e1]/25 text-[#8774e1] text-[11px] font-bold transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#8c1511]/20 hover:bg-[#8c1511]/35 text-[#ff7a75] border border-[#8c1511]/40 text-[11px] font-bold transition-colors cursor-pointer"
             >
               <Plus className="size-3.5" />
               <span>Yangi</span>
@@ -491,10 +500,10 @@ export function ChatClient({
         </div>
 
         {/* Chats / Users List */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1 scrollbar-thin scrollbar-thumb-[#400907]/50 hover:scrollbar-thumb-[#8c1511]/50">
           {activeTab === "direct" ? (
             filteredDirectList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-[#888888]">
+              <div className="p-8 text-center text-xs text-[#a88a89]">
                 Foydalanuvchilar topilmadi
               </div>
             ) : (
@@ -509,8 +518,8 @@ export function ChatClient({
                     onClick={() => handleSelectUser(item.user, item.chatId)}
                     className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
                       isSelected
-                        ? "bg-[#8774e1] text-white shadow-md"
-                        : "hover:bg-white/5 text-[#e1e1e1]"
+                        ? "bg-[#400907] border border-[#8c1511]/70 text-white shadow-md"
+                        : "hover:bg-[#290a08]/60 text-[#e1e1e1] border border-transparent"
                     }`}
                   >
                     {/* Avatar with ONLY online/offline dot on edge */}
@@ -529,12 +538,12 @@ export function ChatClient({
                       </Avatar>
                       {isOnline ? (
                         <span
-                          className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#4fae4e] ring-2 ring-[#1c1c1f]"
+                          className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#4fae4e] ring-2 ring-[#190a09]"
                           title="onlayn"
                         />
                       ) : (
                         <span
-                          className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#555555] ring-2 ring-[#1c1c1f]"
+                          className="absolute bottom-0.5 right-0.5 size-3 rounded-full bg-[#555555] ring-2 ring-[#190a09]"
                           title="oflayn"
                         />
                       )}
@@ -553,7 +562,7 @@ export function ChatClient({
                         {time && (
                           <span
                             className={`text-[11px] shrink-0 font-medium ${
-                              isSelected ? "text-white/80" : "text-[#888888]"
+                              isSelected ? "text-white/80" : "text-[#a88a89]"
                             }`}
                           >
                             {time}
@@ -563,7 +572,7 @@ export function ChatClient({
                       <div className="flex items-center justify-between gap-1 mt-0.5">
                         <p
                           className={`text-xs truncate ${
-                            isSelected ? "text-white/90" : "text-[#8e8e93]"
+                            isSelected ? "text-white/90" : "text-[#9e8281]"
                           }`}
                         >
                           {item.lastMessage || "Xabarlar yo'q"}
@@ -578,24 +587,28 @@ export function ChatClient({
             // Groups Tab
             filteredGroupRooms.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-white/5 text-[#8774e1]">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#290a08] border border-[#400907] text-[#ff7a75]">
                   <Users className="size-6" />
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-white">
                     Hozircha guruhlar yo&apos;q
                   </p>
-                  <p className="text-xs text-[#888888]">
-                    Yangi guruh yaratib, xohlagan a&apos;zolarni qo&apos;shishingiz mumkin.
+                  <p className="text-xs text-[#a88a89]">
+                    {isAdmin
+                      ? "Yangi guruh yaratib, xohlagan a'zolarni qo'shishingiz mumkin."
+                      : "Guruhlar faqat administratorlar tomonidan yaratiladi."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsGroupModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-[#8774e1] hover:bg-[#7b61ff] text-white text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Guruh yaratish
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setIsGroupModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#8c1511] hover:bg-[#a31914] text-white text-xs font-semibold transition-colors cursor-pointer shadow-md"
+                  >
+                    Guruh yaratish
+                  </button>
+                )}
               </div>
             ) : (
               filteredGroupRooms.map((chat) => {
@@ -611,8 +624,8 @@ export function ChatClient({
                     }}
                     className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
                       isSelected
-                        ? "bg-[#8774e1] text-white shadow-md"
-                        : "hover:bg-white/5 text-[#e1e1e1]"
+                        ? "bg-[#400907] border border-[#8c1511]/70 text-white shadow-md"
+                        : "hover:bg-[#290a08]/60 text-[#e1e1e1] border border-transparent"
                     }`}
                   >
                     <div className="relative shrink-0">
@@ -635,7 +648,7 @@ export function ChatClient({
                         {time && (
                           <span
                             className={`text-[11px] shrink-0 font-medium ${
-                              isSelected ? "text-white/80" : "text-[#888888]"
+                              isSelected ? "text-white/80" : "text-[#a88a89]"
                             }`}
                           >
                             {time}
@@ -644,7 +657,7 @@ export function ChatClient({
                       </div>
                       <p
                         className={`text-xs truncate mt-0.5 ${
-                          isSelected ? "text-white/90" : "text-[#8e8e93]"
+                          isSelected ? "text-white/90" : "text-[#9e8281]"
                         }`}
                       >
                         {chat.lastMessage || "Xabarlar yo'q"}
@@ -664,23 +677,18 @@ export function ChatClient({
       <main
         className={`${
           showMobileList ? "hidden md:flex" : "flex"
-        } flex-1 flex-col h-full rounded-none sm:rounded-3xl border border-[#2b2b2f]/40 overflow-hidden relative shadow-2xl`}
-        style={{
-          backgroundColor: "#0e0e11",
-          backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.035) 1.5px, transparent 1.5px)`,
-          backgroundSize: "24px 24px",
-        }}
+        } flex-1 flex-col h-full rounded-none sm:rounded-3xl border border-[#400907]/40 overflow-hidden relative shadow-2xl bg-[#000000]`}
       >
         {selectedChatId && currentRoom ? (
           <>
             {/* Top Chat Header (Clean minimal: Back, Avatar, Name, Online status only) */}
-            <div className="m-2.5 mb-0 px-4 py-2.5 bg-[#1c1c1f]/95 backdrop-blur-md rounded-2xl border border-white/5 flex items-center justify-between z-10 shadow-lg">
+            <div className="m-2.5 mb-0 px-4 py-2.5 bg-[#190a09]/95 backdrop-blur-md rounded-2xl border border-[#400907]/50 flex items-center justify-between z-10 shadow-lg">
               <div className="flex items-center gap-3 min-w-0">
                 {/* Mobile Back Button */}
                 <button
                   type="button"
                   onClick={() => setShowMobileList(true)}
-                  className="md:hidden size-8 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10 shrink-0"
+                  className="md:hidden size-8 rounded-full flex items-center justify-center text-[#a88a89] hover:text-white hover:bg-[#290a08] shrink-0"
                 >
                   <ArrowLeft className="size-5" />
                 </button>
@@ -708,7 +716,7 @@ export function ChatClient({
                   </Avatar>
                   {currentRoom.type === "DIRECT" && (
                     <span
-                      className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-[#1c1c1f] ${
+                      className={`absolute bottom-0 right-0 size-2.5 rounded-full ring-2 ring-[#190a09] ${
                         isCurrentChatOnline ? "bg-[#4fae4e]" : "bg-[#555555]"
                       }`}
                     />
@@ -719,13 +727,53 @@ export function ChatClient({
                   <h3 className="text-[15px] font-bold text-white truncate">
                     {currentRoom.name}
                   </h3>
-                  <p className="text-[12px] text-[#8e8e93] truncate">
-                    {currentRoom.type === "GROUP"
-                      ? `${currentRoom.participantsCount || 2} ta a'zo`
-                      : isCurrentChatOnline
-                      ? "onlayn"
-                      : "oxirgi marta yaqinda bo'lgan"}
-                  </p>
+                  {typingList.length > 0 ? (
+                    <div className="flex items-center gap-1.5 text-[12px] text-[#ff7a75] font-medium animate-in fade-in duration-200">
+                      <span className="flex items-center gap-0.5 shrink-0 py-0.5">
+                        <span className="size-1 rounded-full bg-[#ff7a75] animate-bounce [animation-delay:-0.3s]" />
+                        <span className="size-1 rounded-full bg-[#ff7a75] animate-bounce [animation-delay:-0.15s]" />
+                        <span className="size-1 rounded-full bg-[#ff7a75] animate-bounce" />
+                      </span>
+                      <span className="truncate">
+                        {currentRoom.type === "GROUP"
+                          ? typingList.length === 1
+                            ? `${typingList[0]} yozmoqda...`
+                            : typingList.length === 2
+                            ? `${typingList[0]} va ${typingList[1]} yozmoqda...`
+                            : `${typingList[0]} va yana ${typingList.length - 1} kishi yozmoqda...`
+                          : "yozmoqda..."}
+                      </span>
+                    </div>
+                  ) : currentRoom.type === "DIRECT" ? (
+                    <div className="flex items-center gap-1.5 text-[12px]">
+                      {isCurrentChatOnline ? (
+                        <>
+                          <span className="size-1.5 rounded-full bg-[#4fae4e] shrink-0" />
+                          <span className="text-[#4fae4e] font-medium">online</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="size-1.5 rounded-full bg-[#555555] shrink-0" />
+                          <span className="text-[#a88a89]">offline</span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[12px] text-[#a88a89] truncate">
+                      <span>{currentRoom.participantsCount || 2} ta a'zo</span>
+                      {(() => {
+                        const onlineCount = currentRoom.participantIds
+                          ? currentRoom.participantIds.filter((id) => id !== userId && onlineUsers.has(id)).length + (onlineUsers.has(userId) ? 1 : 0)
+                          : 0;
+                        return onlineCount > 0 ? (
+                          <>
+                            <span>•</span>
+                            <span className="text-[#4fae4e] font-medium">{onlineCount} online</span>
+                          </>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -734,22 +782,22 @@ export function ChatClient({
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5 flex flex-col scrollbar-thin scrollbar-thumb-white/10"
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5 flex flex-col scrollbar-thin scrollbar-thumb-[#400907]/50 hover:scrollbar-thumb-[#8c1511]/50"
             >
               {isFetchingOlder && (
-                <div className="self-center bg-black/40 backdrop-blur-md text-[11px] text-white/70 px-3 py-1 rounded-full">
+                <div className="self-center bg-[#190a09]/90 border border-[#400907] text-[11px] text-[#e68a87] px-3.5 py-1 rounded-full shadow-sm">
                   Eski xabarlar yuklanmoqda...
                 </div>
               )}
 
-              {/* Date divider (Uzbek) */}
-              <div className="self-center bg-black/40 backdrop-blur-md text-[11px] text-white/70 px-3.5 py-1 rounded-full font-medium my-2">
+              {/* Date divider (Telegram maroon pill from screenshot) */}
+              <div className="self-center bg-[#290a08]/90 border border-[#8c1511]/40 text-[11px] text-[#e68a87] px-3.5 py-1 rounded-full font-medium my-2 shadow-sm">
                 Bugun
               </div>
 
               {messages.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-[#777777] text-xs space-y-1">
-                  <MessageSquare className="size-8 opacity-30" />
+                <div className="flex-1 flex flex-col items-center justify-center text-[#8a7271] text-xs space-y-1">
+                  <MessageSquare className="size-8 opacity-40 text-[#8c1511]" />
                   <p>Hozircha xabarlar yo&apos;q. Birinchi bo&apos;lib yozing!</p>
                 </div>
               ) : (
@@ -767,12 +815,12 @@ export function ChatClient({
                       <div
                         className={`max-w-[85%] sm:max-w-[550px] px-3.5 py-2 text-[14px] leading-relaxed shadow-sm transition-all ${
                           isMine
-                            ? "bg-[#7b61ff] text-white rounded-2xl rounded-br-xs"
-                            : "bg-[#212124] text-white rounded-2xl rounded-bl-xs border border-white/5"
+                            ? "bg-[#400907] border border-[#8c1511]/50 text-white rounded-2xl rounded-br-xs"
+                            : "bg-[#290a08] border border-[#400907] text-[#f5e6e5] rounded-2xl rounded-bl-xs"
                         }`}
                       >
                         {!isMine && currentRoom.type === "GROUP" && (
-                          <p className="text-[11px] font-bold text-[#8774e1] mb-0.5">
+                          <p className="text-[11px] font-bold text-[#ff7a75] mb-0.5">
                             {msg.senderName}
                           </p>
                         )}
@@ -781,18 +829,18 @@ export function ChatClient({
                         </p>
                         <div
                           className={`flex items-center justify-end gap-1 mt-1 text-[11px] select-none float-right ml-2 -mb-0.5 ${
-                            isMine ? "text-white/80" : "text-[#8e8e93]"
+                            isMine ? "text-[#d4b0af]" : "text-[#bda2a1]"
                           }`}
                         >
                           <span>{time}</span>
                           {isMine && (
                             <span>
                               {msg.status === "READ" ? (
-                                <CheckCheck className="size-3.5 text-cyan-200" />
+                                <CheckCheck className="size-3.5 text-[#ff7a75]" />
                               ) : msg.status === "DELIVERED" ? (
-                                <CheckCheck className="size-3.5 text-white/70" />
+                                <CheckCheck className="size-3.5 text-[#d4b0af]" />
                               ) : (
-                                <Check className="size-3.5 text-white/70" />
+                                <Check className="size-3.5 text-[#d4b0af]" />
                               )}
                             </span>
                           )}
@@ -805,32 +853,24 @@ export function ChatClient({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Typing Indicator */}
-            {typingList.length > 0 && (
-              <div className="px-6 py-1 text-xs text-[#8774e1] italic flex items-center gap-1.5 shrink-0">
-                <span className="size-1.5 rounded-full bg-[#8774e1] animate-ping" />
-                <span>{typingList.join(", ")} yozmoqda...</span>
-              </div>
-            )}
-
             {/* Bottom Input Bar: Text input and Send button ONLY */}
             <form
               onSubmit={handleSend}
-              className="m-2.5 mt-0 p-1.5 pl-4 bg-[#1c1c1f] rounded-2xl border border-white/5 flex items-center gap-2 shadow-xl shrink-0"
+              className="m-2.5 mt-0 p-1.5 pl-4 bg-[#190a09] rounded-2xl border border-[#400907]/60 flex items-center gap-2 shadow-xl shrink-0"
             >
               <input
                 type="text"
                 value={inputText}
                 onChange={handleInputChange}
                 placeholder="Xabar yozing..."
-                className="flex-1 bg-transparent text-white text-[14px] placeholder-[#777777] focus:outline-hidden py-1.5"
+                className="flex-1 bg-transparent text-white text-[14px] placeholder-[#8a7271] focus:outline-hidden py-1.5"
               />
 
-              {/* Purple Telegram Send Button */}
+              {/* Crimson Send Button */}
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="size-10 rounded-full bg-[#8774e1] hover:bg-[#7b61ff] disabled:opacity-40 disabled:hover:bg-[#8774e1] text-white flex items-center justify-center transition-all shrink-0 cursor-pointer shadow-md"
+                className="size-10 rounded-full bg-[#8c1511] hover:bg-[#a31914] disabled:opacity-40 disabled:hover:bg-[#8c1511] text-white flex items-center justify-center transition-all shrink-0 cursor-pointer shadow-md shadow-[#8c1511]/30"
                 title="Yuborish"
               >
                 <Send className="size-4.5 -translate-x-0.5 translate-y-0.5" />
@@ -840,11 +880,11 @@ export function ChatClient({
         ) : (
           // Empty State
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-            <div className="size-16 rounded-full bg-[#8774e1]/10 flex items-center justify-center text-[#8774e1]">
+            <div className="size-16 rounded-full bg-[#290a08] border border-[#400907] flex items-center justify-center text-[#ff7a75]">
               <MessageSquare className="size-8" />
             </div>
             <h3 className="text-base font-bold text-white">Suhbatni tanlang</h3>
-            <p className="text-xs text-[#8e8e93] max-w-xs">
+            <p className="text-xs text-[#a88a89] max-w-xs">
               Chap tomondagi ro&apos;yxatdan biror foydalanuvchini tanlang va muloqotni boshlang.
             </p>
           </div>
@@ -854,26 +894,26 @@ export function ChatClient({
       {/* =========================================================================
           GROUP CREATION MODAL
          ========================================================================= */}
-      {isGroupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in-50">
-          <div className="w-full max-w-md bg-[#1c1c1f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+      {isGroupModalOpen && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in-50">
+          <div className="w-full max-w-md bg-[#190a09] border border-[#400907] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-[#400907]/60 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Users className="size-4 text-[#8774e1]" />
+                <Users className="size-4 text-[#ff7a75]" />
                 <span>Yangi guruh yaratish</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsGroupModalOpen(false)}
-                className="size-8 rounded-full flex items-center justify-center text-[#aaaaaa] hover:text-white hover:bg-white/10"
+                className="size-8 rounded-full flex items-center justify-center text-[#a88a89] hover:text-white hover:bg-[#290a08]"
               >
                 <X className="size-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateGroup} className="flex-1 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-white/10 space-y-2">
-                <label className="text-xs font-semibold text-[#aaaaaa]">
+              <div className="p-4 border-b border-[#400907]/60 space-y-2">
+                <label className="text-xs font-semibold text-[#a88a89]">
                   Guruh nomi
                 </label>
                 <input
@@ -882,17 +922,17 @@ export function ChatClient({
                   placeholder="Guruh nomini kiriting..."
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  className="w-full h-10 rounded-xl bg-[#27272a] focus:outline-hidden px-3 text-sm text-white placeholder-[#777777]"
+                  className="w-full h-10 rounded-xl bg-[#290a08] border border-[#400907] focus:border-[#8c1511]/70 focus:outline-hidden px-3 text-sm text-white placeholder-[#8a7271]"
                 />
               </div>
 
               <div className="p-4 pb-2">
-                <label className="text-xs font-semibold text-[#aaaaaa]">
+                <label className="text-xs font-semibold text-[#a88a89]">
                   A&apos;zolarni tanlang ({selectedGroupMembers.length} ta tanlandi)
                 </label>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+              <div className="flex-1 overflow-y-auto px-4 space-y-1 scrollbar-thin scrollbar-thumb-[#400907]/50">
                 {platformUsers.map((u) => {
                   const isSelected = selectedGroupMembers.includes(u.id);
                   return (
@@ -900,7 +940,9 @@ export function ChatClient({
                       key={u.id}
                       onClick={() => toggleGroupMember(u.id)}
                       className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors ${
-                        isSelected ? "bg-[#8774e1]/20 text-white" : "hover:bg-white/5 text-[#cccccc]"
+                        isSelected
+                          ? "bg-[#400907] text-white border border-[#8c1511]/40"
+                          : "hover:bg-[#290a08]/60 text-[#cccccc] border border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -916,7 +958,7 @@ export function ChatClient({
                         </Avatar>
                         <div>
                           <p className="text-xs font-semibold text-white">{u.name}</p>
-                          <p className="text-[10px] text-[#888888]">
+                          <p className="text-[10px] text-[#a88a89]">
                             {u.username ? `@${u.username}` : u.email}
                           </p>
                         </div>
@@ -925,8 +967,8 @@ export function ChatClient({
                       <div
                         className={`size-5 rounded-md border flex items-center justify-center transition-colors ${
                           isSelected
-                            ? "bg-[#8774e1] border-[#8774e1] text-white"
-                            : "border-white/20"
+                            ? "bg-[#8c1511] border-[#8c1511] text-white"
+                            : "border-[#400907]"
                         }`}
                       >
                         {isSelected && <Check className="size-3.5" />}
@@ -936,18 +978,18 @@ export function ChatClient({
                 })}
               </div>
 
-              <div className="p-4 border-t border-white/10 flex items-center justify-end gap-2 bg-[#18181a]">
+              <div className="p-4 border-t border-[#400907]/60 flex items-center justify-end gap-2 bg-[#120605]">
                 <button
                   type="button"
                   onClick={() => setIsGroupModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#27272a] hover:bg-[#323236] text-xs font-semibold text-[#cccccc] transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[#290a08] hover:bg-[#400907] text-xs font-semibold text-[#cccccc] transition-colors"
                 >
                   Bekor qilish
                 </button>
                 <button
                   type="submit"
                   disabled={!groupName.trim() || isSubmittingGroup}
-                  className="px-5 py-2 rounded-xl bg-[#8774e1] hover:bg-[#7b61ff] disabled:opacity-40 text-xs font-bold text-white transition-colors cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#8c1511] hover:bg-[#a31914] disabled:opacity-40 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-[#8c1511]/30"
                 >
                   {isSubmittingGroup ? "Yaratilmoqda..." : "Guruh yaratish"}
                 </button>

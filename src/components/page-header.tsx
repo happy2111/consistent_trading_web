@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { LogOut, Moon, Sun, User } from "lucide-react";
@@ -63,6 +64,16 @@ export function PageHeader({ title, rightSlot, mobileSlot }: PageHeaderProps) {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          render={<Link href="/profile" />}
+          className="flex items-center gap-2 cursor-pointer py-2 text-xs"
+        >
+          <User className="size-4 text-emerald-500" />
+          <span>Mening profilim (Profile)</span>
+        </DropdownMenuItem>
+
         <DropdownMenuSeparator />
 
         <DropdownMenuItem

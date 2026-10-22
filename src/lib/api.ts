@@ -240,3 +240,76 @@ export async function fetchChatMessages(chatId: string, cursor?: string, limit =
   });
   return data;
 }
+
+export async function editChatMessage(messageId: string, content: string, userId: string) {
+  const { data } = await apiClient.patch(
+    `/api/chat/messages/${messageId}`,
+    { content },
+    { headers: { 'x-user-id': userId } },
+  );
+  return data;
+}
+
+export async function deleteChatMessage(messageId: string, userId: string) {
+  const { data } = await apiClient.delete(`/api/chat/messages/${messageId}`, {
+    headers: { 'x-user-id': userId },
+  });
+  return data;
+}
+
+/* ========================================================================== */
+/* USER PROFILE & OVERALL PERFORMANCE API                                     */
+/* ========================================================================== */
+
+export type UserProfile = {
+  id: string;
+  telegramId?: string | number | null;
+  googleId?: string | null;
+  email?: string | null;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  image?: string | null;
+  passportFrontUrl?: string | null;
+  passportBackUrl?: string | null;
+  jshshir?: string | null;
+  documentNumber?: string | null;
+  verified: boolean;
+  role: "ADMIN" | "USER";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function fetchUserProfile(userId: string): Promise<UserProfile> {
+  const { data } = await apiClient.get<UserProfile>(`/api/users/${userId}`);
+  return data;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  payload: { firstName?: string; lastName?: string; username?: string; image?: string },
+): Promise<UserProfile> {
+  const { data } = await apiClient.patch<UserProfile>(`/api/users/${userId}/profile`, payload);
+  return data;
+}
+
+export type OverallStatistics = {
+  userId: string;
+  umumiyFoyda: number;
+  umumiyZarar: number;
+  umumiyHisob: number;
+  winCount: number;
+  stopLossCount: number;
+  breakevenCount: number;
+  totalDays: number;
+  winRate: number;
+  balanceColorStatus: string;
+  riskViolations: number;
+};
+
+export async function fetchOverallStatistics(userId: string): Promise<OverallStatistics> {
+  const { data } = await apiClient.get<OverallStatistics>("/api/statistics/overall", {
+    params: { userId },
+  });
+  return data;
+}

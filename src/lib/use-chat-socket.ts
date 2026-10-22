@@ -16,10 +16,20 @@ export interface ChatMessage {
 
 export function useChatSocket(userId: string, currentChatId?: string) {
   const socketRef = useRef<Socket | null>(null);
+  const currentChatIdRef = useRef<string | undefined>(currentChatId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Keep currentChatIdRef in sync and reset typing when chat changes
+  useEffect(() => {
+    currentChatIdRef.current = currentChatId;
+    Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
+    typingTimeoutsRef.current = {};
+    setTypingUsers({});
+  }, [currentChatId]);
 
   // 1. Persistent Socket Connection per userId
   useEffect(() => {
@@ -43,8 +53,8 @@ export function useChatSocket(userId: string, currentChatId?: string) {
 
     socket.on("connect", () => {
       // Upon connection, if a room is already chosen, join it
-      if (currentChatId) {
-        socket.emit("join_room", { chatId: currentChatId });
+      if (currentChatIdRef.current) {
+        socket.emit("join_room", { chatId: currentChatIdRef.current });
       }
     });
 
@@ -100,6 +110,20 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       );
     });
 
+    // Message edited broadcast
+    socket.on("message_edited", (data: { id: string; chatId: string; content: string }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === data.id ? { ...m, content: data.content } : m
+        ),
+      );
+    });
+
+    // Message deleted broadcast
+    socket.on("message_deleted", (data: { id: string; chatId: string }) => {
+      setMessages((prev) => prev.filter((m) => m.id !== data.id));
+    });
+
     // Read status updates
     socket.on(
       "messages_read_update",
@@ -121,25 +145,47 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       },
     );
 
-    // Typing indicators
+    // Typing indicators with scoped room check and auto-expiry timeout
     socket.on(
       "user_typing",
       (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => {
         if (data.userId === userId) return;
+        if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
 
-        setTypingUsers((prev) => {
-          const next = { ...prev };
-          if (data.isTyping) {
-            next[data.userId] = data.userName;
-          } else {
-            delete next[data.userId];
+        if (data.isTyping) {
+          if (typingTimeoutsRef.current[data.userId]) {
+            clearTimeout(typingTimeoutsRef.current[data.userId]);
           }
-          return next;
-        });
+          typingTimeoutsRef.current[data.userId] = setTimeout(() => {
+            setTypingUsers((prev) => {
+              const next = { ...prev };
+              delete next[data.userId];
+              return next;
+            });
+            delete typingTimeoutsRef.current[data.userId];
+          }, 3500);
+
+          setTypingUsers((prev) => ({
+            ...prev,
+            [data.userId]: data.userName || "Foydalanuvchi",
+          }));
+        } else {
+          if (typingTimeoutsRef.current[data.userId]) {
+            clearTimeout(typingTimeoutsRef.current[data.userId]);
+            delete typingTimeoutsRef.current[data.userId];
+          }
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[data.userId];
+            return next;
+          });
+        }
       },
     );
 
     return () => {
+      Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
+      typingTimeoutsRef.current = {};
       socket.disconnect();
       socketRef.current = null;
     };
@@ -160,6 +206,17 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       }
     };
   }, [currentChatId]);
+
+  // Stop typing immediately
+  const stopTyping = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket || !currentChatIdRef.current) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    socket.emit("typing_stop", { chatId: currentChatIdRef.current });
+  }, []);
 
   // Handle typing with 2.5s debounce
   const sendTyping = useCallback(
@@ -205,9 +262,49 @@ export function useChatSocket(userId: string, currentChatId?: string) {
       });
 
       // Stop typing
-      socket.emit("typing_stop", { chatId: currentChatId });
+      stopTyping();
     },
-    [currentChatId, userId],
+    [currentChatId, userId, stopTyping],
+  );
+
+  // Edit message
+  const editMessage = useCallback(
+    (messageId: string, content: string) => {
+      const socket = socketRef.current;
+      const trimmed = content.trim();
+      if (!socket || !currentChatId || !trimmed) return;
+
+      // Optimistic update
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, content: trimmed } : m
+        ),
+      );
+
+      socket.emit("edit_message", {
+        chatId: currentChatId,
+        messageId,
+        content: trimmed,
+      });
+    },
+    [currentChatId],
+  );
+
+  // Delete message
+  const deleteMessage = useCallback(
+    (messageId: string) => {
+      const socket = socketRef.current;
+      if (!socket || !currentChatId) return;
+
+      // Optimistic delete
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      socket.emit("delete_message", {
+        chatId: currentChatId,
+        messageId,
+      });
+    },
+    [currentChatId],
   );
 
   return {
@@ -216,6 +313,9 @@ export function useChatSocket(userId: string, currentChatId?: string) {
     typingUsers,
     onlineUsers,
     sendMessage,
+    editMessage,
+    deleteMessage,
     sendTyping,
+    stopTyping,
   };
 }

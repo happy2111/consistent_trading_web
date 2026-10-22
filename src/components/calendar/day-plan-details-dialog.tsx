@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import Link from "next/link";
+import { format, isToday } from "date-fns";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   CalendarDays,
+  CheckCircle2,
   Clock,
   DollarSign,
   Edit2,
@@ -240,6 +242,18 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
                 className="h-8 text-xs gap-1"
               >
                 <Sliders className="size-3.5" /> Reja Qo&apos;shish
+              </Button>
+            )}
+            {!isAdmin && isToday(selectedPlanDate) && (
+              <Button
+                type="button"
+                size="sm"
+                render={<Link href="/checkout" />}
+                onClick={closePlanDetails}
+                className="h-8 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700 shadow-sm"
+              >
+                <CheckCircle2 className="size-3.5" />
+                Bugungi checkoutni topshirish
               </Button>
             )}
           </div>

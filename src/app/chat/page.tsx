@@ -19,14 +19,17 @@ export default async function ChatPage() {
   const userName = session.user.name || "Trader";
   const userEmail = session.user.email || "";
   const userImage = session.user.image || "";
+  const userRole = (session?.user as any)?.role || status.role || "USER";
+  const isAdmin = userRole === "ADMIN";
 
   return (
-    <div className="h-dvh w-full flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="h-dvh w-full flex flex-col bg-[#000000] text-foreground overflow-hidden">
       <ChatClient
         userId={userId}
         userName={userName}
         userEmail={userEmail}
         userImage={userImage}
+        isAdmin={isAdmin}
       />
     </div>
   );

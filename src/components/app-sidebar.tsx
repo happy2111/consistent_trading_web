@@ -121,7 +121,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center justify-between rounded-lg border bg-sidebar-accent/50 p-2">
-              <div className="flex items-center gap-2.5 overflow-hidden">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2.5 overflow-hidden flex-1 group transition-opacity hover:opacity-80"
+                title="Mening profilim"
+              >
                 <Avatar className="size-8 rounded-lg border">
                   {user?.image ? (
                     <AvatarImage src={user.image} alt={user.name ?? "User"} />
@@ -131,14 +135,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-xs leading-tight">
-                  <span className="truncate font-semibold text-foreground">
+                  <span className="truncate font-semibold text-foreground group-hover:text-primary transition-colors">
                     {user?.name ?? "Trader"}
                   </span>
                   <span className="truncate text-[11px] text-muted-foreground">
                     {user?.email ?? ""}
                   </span>
                 </div>
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/login" })}
