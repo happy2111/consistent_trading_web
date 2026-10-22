@@ -116,7 +116,7 @@ export function CalendarView({
     <Card className="border-border/60 shadow-sm">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-purple-600/10 p-2 text-purple-600 shrink-0">
+          <div className="rounded-xl bg-[#8c1511]/15 p-2 text-[#ff7a75] shrink-0 border border-[#8c1511]/30">
             <CalendarDays className="size-5" />
           </div>
           <div>
@@ -161,7 +161,7 @@ export function CalendarView({
             <Button
               size="sm"
               onClick={handleOpenCreatePlan}
-              className="h-8 gap-1.5 bg-purple-600 text-xs font-semibold text-white shadow-sm hover:bg-purple-700"
+              className="h-8 gap-1.5 bg-[#8c1511] text-xs font-semibold text-white shadow-sm shadow-[#8c1511]/30 hover:bg-[#a31914]"
             >
               <Plus className="size-3.5" /> <span className="hidden sm:inline">Yangi Reja Yaratish</span><span className="sm:hidden">Reja</span>
             </Button>
@@ -214,16 +214,18 @@ export function CalendarView({
                 statusBg = "bg-amber-500 text-white font-bold";
               }
             } else if (hasActivePlan) {
-              statusBg = "bg-purple-600/20 text-purple-600 dark:text-purple-400 font-semibold ring-1 ring-purple-600/50";
+              statusBg = "bg-[#8c1511]/20 text-[#ff7a75] font-semibold ring-1 ring-[#8c1511]/50";
             }
 
             return (
               <div
                 key={dateStr}
                 onClick={() => handleDayClick(day)}
-                className={`group relative flex min-h-[52px] sm:min-h-[96px] flex-col items-center sm:items-stretch justify-center sm:justify-between rounded-xl border p-1 sm:p-2 text-center sm:text-left transition-all hover:border-foreground/30 hover:shadow-md cursor-pointer ${
+                className={`group relative flex min-h-[52px] sm:min-h-[96px] flex-col items-center sm:items-stretch justify-center sm:justify-between rounded-xl border p-1 sm:p-2 text-center sm:text-left transition-all hover:border-[#8c1511]/60 hover:shadow-md cursor-pointer ${
                   today
-                    ? "border-purple-600/60 bg-purple-600/5 ring-1 ring-purple-600/40"
+                    ? "border-[#8c1511] bg-[#8c1511]/10 ring-1 ring-[#8c1511]/40"
+                    : hasActivePlan && !report
+                    ? "border-[#8c1511]/30 bg-[#8c1511]/[0.03] hover:bg-[#8c1511]/[0.08]"
                     : "border-border/60 bg-card hover:bg-muted/40"
                 }`}
               >
@@ -232,10 +234,10 @@ export function CalendarView({
                   <span
                     className={`flex size-8 sm:size-6 items-center justify-center rounded-full text-sm sm:text-xs font-bold transition-transform ${
                       today
-                        ? "bg-purple-600 text-white shadow-sm"
+                        ? "bg-[#8c1511] text-white shadow-sm"
                         : statusBg
-                        ? `${statusBg} sm:bg-transparent sm:text-foreground sm:ring-0 group-hover:text-purple-600`
-                        : "text-foreground group-hover:text-purple-600"
+                        ? `${statusBg} sm:bg-transparent sm:text-foreground sm:ring-0 group-hover:text-[#ff7a75]`
+                        : "text-foreground group-hover:text-[#ff7a75]"
                     }`}
                   >
                     {format(day, "d")}
@@ -245,7 +247,7 @@ export function CalendarView({
                   {hasActivePlan && (
                     <span
                       title="Ushbu kunga reja belgilangan"
-                      className="hidden sm:inline-block size-1.5 rounded-full bg-purple-600"
+                      className="hidden sm:inline-block size-2 rounded-full bg-[#8c1511] ring-2 ring-[#8c1511]/20"
                     />
                   )}
                 </div>
@@ -258,7 +260,7 @@ export function CalendarView({
                         const netHisob = parseDecimal(report.netHisob);
                         return (
                           <div
-                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            className={`rounded-lg px-2 py-1 text-[10px] font-bold ${
                               netHisob >= 0
                                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                 : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
@@ -275,18 +277,14 @@ export function CalendarView({
                         );
                       })()
                     ) : report.status === "MISSED" ? (
-                      <div className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground text-center truncate">
+                      <div className="rounded-lg bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground text-center truncate">
                         MISSED
                       </div>
                     ) : (
-                      <div className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 text-center truncate">
+                      <div className="rounded-lg bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-600 text-center truncate">
                         PENDING
                       </div>
                     )
-                  ) : hasActivePlan ? (
-                    <div className="rounded border border-dashed border-purple-500/30 px-1 py-0.5 text-[9px] font-medium text-purple-600/80 text-center truncate">
-                      Rejali kun
-                    </div>
                   ) : null}
                 </div>
               </div>
@@ -295,9 +293,9 @@ export function CalendarView({
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 border-t pt-3 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border/60 pt-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-purple-600" />
+            <span className="size-2.5 rounded-full bg-[#8c1511]" />
             <span>Faol Reja</span>
           </div>
           <div className="flex items-center gap-1.5">

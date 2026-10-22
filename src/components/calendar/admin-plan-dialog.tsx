@@ -10,9 +10,10 @@ import {
   getDay,
   parseISO,
 } from "date-fns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -36,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CreateTaskTemplateDto, FieldType } from "@/types/trading";
-import { createTaskTemplate } from "@/lib/api";
+import { createTaskTemplate, fetchTaskTemplates } from "@/lib/api";
 import { useTradingStore } from "@/lib/store";
 
 const WEEKDAYS = [
@@ -248,6 +249,54 @@ export function AdminPlanDialog() {
     }
   }, [startDate, endDate, repeatDays]);
 
+  // Existing templates query to check for overlapping plans
+  const { data: existingTemplates = [] } = useQuery({
+    queryKey: ["templates"],
+    queryFn: () => fetchTaskTemplates(false),
+  });
+
+  // Calculate conflicting planned trading days
+  const conflictingDays = React.useMemo(() => {
+    if (!startDate || !endDate || repeatDays.length === 0 || !existingTemplates.length) {
+      return [];
+    }
+
+    try {
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      if (start > end) return [];
+
+      const allDays = eachDayOfInterval({ start, end });
+      const conflicts: string[] = [];
+
+      for (const d of allDays) {
+        const dow = getDay(d);
+        const converted = dow === 0 ? 7 : dow;
+
+        if (!repeatDays.includes(converted)) continue;
+
+        const dateStr = format(d, "yyyy-MM-dd");
+
+        const hasConflict = existingTemplates.some((t) => {
+          if (!t.startDate || !t.endDate) return false;
+          const tStart = format(parseISO(t.startDate), "yyyy-MM-dd");
+          const tEnd = format(parseISO(t.endDate), "yyyy-MM-dd");
+          const inRange = dateStr >= tStart && dateStr <= tEnd;
+          const repeats = t.repeatDays?.includes(converted) ?? true;
+          return inRange && repeats;
+        });
+
+        if (hasConflict) {
+          conflicts.push(dateStr);
+        }
+      }
+
+      return conflicts;
+    } catch {
+      return [];
+    }
+  }, [startDate, endDate, repeatDays, existingTemplates]);
+
   const toggleWeekday = (dayId: number) => {
     setRepeatDays((prev) =>
       prev.includes(dayId)
@@ -392,6 +441,14 @@ export function AdminPlanDialog() {
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (conflictingDays.length > 0) {
+      toast.error(
+        `Ushbu sanalarda allaqachon reja mavjud (${conflictingDays.slice(0, 3).join(", ")}${conflictingDays.length > 3 ? "..." : ""}). Bitta kunga bir nechta reja tuzish mumkin emas.`
+      );
+      return;
+    }
+
     if (currentStep === 1) {
       if (!startDate) {
         toast.error("Boshlanish sanasini kiriting");
@@ -436,7 +493,7 @@ export function AdminPlanDialog() {
                 key={step}
                 className={`h-full transition-all duration-300 ${
                   currentStep >= step
-                    ? "bg-purple-600"
+                    ? "bg-[#8c1511]"
                     : "bg-transparent"
                 }`}
               />
@@ -505,7 +562,7 @@ export function AdminPlanDialog() {
                               }}
                               className={`h-[44px] flex items-center justify-center snap-center cursor-pointer transition-all duration-150 ${
                                 isSelected
-                                  ? "text-purple-400 font-extrabold text-2xl scale-110 tracking-tight"
+                                  ? "text-[#ff7a75] font-extrabold text-2xl scale-110 tracking-tight"
                                   : "text-zinc-500 font-medium text-base hover:text-zinc-300"
                               }`}
                             >
@@ -555,7 +612,7 @@ export function AdminPlanDialog() {
                               }}
                               className={`h-[44px] flex items-center justify-center snap-center cursor-pointer uppercase transition-all duration-150 ${
                                 isSelected
-                                  ? "text-purple-400 font-extrabold text-2xl scale-110 tracking-wider"
+                                  ? "text-[#ff7a75] font-extrabold text-2xl scale-110 tracking-wider"
                                   : "text-zinc-500 font-medium text-base hover:text-zinc-300"
                               }`}
                             >
@@ -578,6 +635,19 @@ export function AdminPlanDialog() {
                   </div>
                 </div>
               </div>
+
+              {/* Conflict Alert in Step 1 */}
+              {conflictingDays.length > 0 && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    <span>Ushbu sanalarda allaqachon reja mavjud!</span>
+                  </div>
+                  <p className="text-[11px] text-rose-400 leading-relaxed">
+                    Tanlangan oraliqdagi {conflictingDays.length} ta savdo kuniga allaqachon reja tuzilgan ({conflictingDays.slice(0, 3).join(", ")}{conflictingDays.length > 3 ? "..." : ""}). Iltimos, bo&apos;sh sana oraliqlarini tanlang.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -602,9 +672,9 @@ export function AdminPlanDialog() {
                         key={day.id}
                         type="button"
                         onClick={() => toggleWeekday(day.id)}
-                        className={`flex flex-col items-center justify-center rounded-xl border py-2.5 text-xs font-semibold transition-all ${
+                        className={`flex flex-col items-center justify-center rounded-xl border py-2.5 text-xs font-semibold transition-all cursor-pointer ${
                           isSelected
-                            ? "border-purple-600 bg-purple-600/15 text-purple-600 ring-1 ring-purple-600/30"
+                            ? "border-[#8c1511] bg-[#8c1511]/15 text-[#ff7a75] ring-1 ring-[#8c1511]/40"
                             : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -634,20 +704,33 @@ export function AdminPlanDialog() {
               </div>
 
               {/* Tugash sanasi & Savdo kunlari - SHOWN HERE AFTER CHOOSING WORK DAYS */}
-              <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-4 text-xs space-y-1.5">
+              <div className="rounded-2xl border border-[#8c1511]/30 bg-[#8c1511]/5 p-4 text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground font-medium">Reja tugash sanasi:</span>
                   <span className="font-bold text-foreground text-sm">
                     {endDate}
                   </span>
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-purple-500/20">
+                <div className="flex items-center justify-between pt-1 border-t border-[#8c1511]/20">
                   <span className="text-muted-foreground font-medium">Faol savdo kunlari:</span>
-                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                  <span className="font-bold text-[#ff7a75]">
                     {tradingDayStats.tradingDays} ta savdo kuni
                   </span>
                 </div>
               </div>
+
+              {/* Conflict Alert in Step 2 */}
+              {conflictingDays.length > 0 && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    <span>Ushbu sanalarda allaqachon reja mavjud!</span>
+                  </div>
+                  <p className="text-[11px] text-rose-400 leading-relaxed">
+                    Tanlangan ish kunlarining {conflictingDays.length} tasida allaqachon reja rejalashtirilgan ({conflictingDays.slice(0, 3).join(", ")}{conflictingDays.length > 3 ? "..." : ""}). Bitta kunga bir nechta reja tuzish mumkin emas.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -868,8 +951,9 @@ export function AdminPlanDialog() {
             <Button
               type="button"
               size="sm"
+              disabled={conflictingDays.length > 0}
               onClick={handleNextStep}
-              className="bg-purple-600 text-white hover:bg-purple-700 font-semibold"
+              className="bg-[#8c1511] text-white hover:bg-[#a31914] font-semibold shadow-md shadow-[#8c1511]/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Keyingisi <ChevronRight className="size-4 ml-1" />
             </Button>
@@ -877,9 +961,9 @@ export function AdminPlanDialog() {
             <Button
               type="button"
               size="sm"
-              disabled={createPlanMutation.isPending}
+              disabled={createPlanMutation.isPending || conflictingDays.length > 0}
               onClick={handleNextStep}
-              className="bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
+              className="bg-emerald-600 text-white hover:bg-emerald-700 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createPlanMutation.isPending ? "Saqlanmoqda..." : "Rejani Saqlash"}
             </Button>
