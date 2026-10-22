@@ -23,6 +23,8 @@ const breadcrumbTitles: Record<string, string> = {
   "/calendar": "Rejalar",
   "/history": "Hisobotlar",
   "/chat": "Chat",
+  "/admin/users": "Foydalanuvchilar",
+  "/profile": "Profil",
 };
 
 export function AppHeader() {

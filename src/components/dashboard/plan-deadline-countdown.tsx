@@ -79,7 +79,7 @@ export function PlanDeadlineCountdown({
         <span className="text-xs sm:text-sm font-black text-foreground leading-tight">
           {String(days).padStart(2, "0")}
         </span>
-        <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+        <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-[#ff7a75]">
           kun
         </span>
       </div>
@@ -112,7 +112,7 @@ export function PlanDeadlineCountdown({
 
       {/* Seconds */}
       <div className="flex flex-col items-center justify-center bg-transparent px-1 py-0.5 min-w-[28px] sm:min-w-[32px]">
-        <span className="text-xs sm:text-sm font-bold text-purple-600 dark:text-purple-400 leading-tight">
+        <span className="text-xs sm:text-sm font-bold text-[#ff7a75] leading-tight">
           {String(seconds).padStart(2, "0")}
         </span>
         <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-muted-foreground">

@@ -93,7 +93,7 @@ export function PlanSeriesView({
   if (!selectedPlan || plans.length === 0) {
     return (
       <Card className="border-dashed border-border/80 bg-muted/10 p-8 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 mb-3">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#8c1511]/15 text-[#ff7a75] mb-3">
           <Layers className="size-6" />
         </div>
         <h3 className="text-base font-bold">Hozirda hech qanday reja yaratilmagan</h3>
@@ -103,7 +103,7 @@ export function PlanSeriesView({
         <div className="mt-4">
           <Link
             href="/calendar"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 transition-all shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#8c1511] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#a31914] transition-all shadow-md shadow-[#8c1511]/30"
           >
             <Plus className="size-3.5" /> Reja Yaratish
           </Link>

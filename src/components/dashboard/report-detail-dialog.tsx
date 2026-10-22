@@ -158,7 +158,7 @@ export function ReportDetailDialog() {
                     key={item.id || item.templateId}
                     className="rounded-xl border bg-card p-3 space-y-1.5 text-sm shadow-xs"
                   >
-                    <div className="flex items-center justify-between text-xs font-semibold text-purple-600 dark:text-purple-400">
+                    <div className="flex items-center justify-between text-xs font-semibold text-[#ff7a75]">
                       <span>{item.template?.title || "Tahlil"}:</span>
                     </div>
                     {item.value ? (

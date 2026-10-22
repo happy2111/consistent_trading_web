@@ -128,10 +128,10 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
         <DialogHeader>
           <div className="flex items-center justify-between gap-2">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <CalendarDays className="size-5 text-purple-600" />
+              <CalendarDays className="size-5 text-[#ff7a75]" />
               {dateFormatted}
             </DialogTitle>
-            <Badge className="bg-purple-600/15 text-purple-600 font-semibold border-purple-500/20">
+            <Badge className="bg-[#8c1511]/15 text-[#ff7a75] font-semibold border border-[#8c1511]/30">
               Rejali Kun
             </Badge>
           </div>
@@ -143,7 +143,7 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
         <div className="space-y-4 py-2">
           <div className="flex items-center justify-between">
             <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              <Clock className="size-3.5 text-purple-600" /> Rejalar & Vazifalar (Plans & Tasks)
+              <Clock className="size-3.5 text-[#ff7a75]" /> Rejalar & Vazifalar (Plans & Tasks)
             </h4>
             <Badge variant="outline" className="text-[10px]">
               {selectedPlanTemplates.length} ta vazifa
@@ -195,7 +195,7 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
                             -${currentVal || "0"}
                           </span>
                         ) : t.title.toLowerCase().includes("depozit") || t.title.toLowerCase().includes("kapital") || t.title.toLowerCase().includes("investitsiya") ? (
-                          <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-sm font-bold text-[#ff7a75]">
                             ${currentVal || "0"}
                           </span>
                         ) : t.title.toLowerCase().includes("foyda") ? (
@@ -289,7 +289,7 @@ export function DayPlanDetailsDialog({ isAdmin = false }: DayPlanDetailsDialogPr
                     variant="outline"
                     size="sm"
                     onClick={() => setIsEditing(true)}
-                    className="h-8 gap-1.5 text-xs text-purple-600 border-purple-500/30 hover:bg-purple-500/10"
+                    className="h-8 gap-1.5 text-xs text-[#ff7a75] border-[#8c1511]/40 hover:bg-[#8c1511]/15"
                   >
                     <Edit2 className="size-3.5" /> O&apos;zgartirish
                   </Button>

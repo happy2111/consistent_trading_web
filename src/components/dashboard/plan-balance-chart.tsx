@@ -247,10 +247,10 @@ export function PlanBalanceChart({ plan, reports = [] }: PlanBalanceChartProps) 
               <Line
                 type="monotone"
                 dataKey="balance"
-                stroke="#8b5cf6"
+                stroke="#8c1511"
                 strokeWidth={3}
-                dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 1, stroke: "#ffffff" }}
-                activeDot={{ r: 6, fill: "#8b5cf6" }}
+                dot={{ r: 4, fill: "#8c1511", strokeWidth: 1, stroke: "#ffffff" }}
+                activeDot={{ r: 6, fill: "#ff7a75" }}
                 connectNulls={false}
               />
             </LineChart>

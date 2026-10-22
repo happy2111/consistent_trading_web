@@ -341,3 +341,83 @@ export async function fetchOverallStatistics(userId: string): Promise<OverallSta
   });
   return data;
 }
+
+/* ========================================================================== */
+/* ADMIN USERS MANAGEMENT API                                                 */
+/* ========================================================================== */
+
+export type AdminUser = {
+  id: string;
+  telegramId?: string | number | null;
+  googleId?: string | null;
+  email?: string | null;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  image?: string | null;
+  passportFrontUrl?: string | null;
+  passportBackUrl?: string | null;
+  jshshir?: string | null;
+  documentNumber?: string | null;
+  verified: boolean;
+  role: "ADMIN" | "USER";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const { data } = await apiClient.get<AdminUser[]>("/api/users");
+  return data;
+}
+
+export async function adminCreateUser(payload: {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  email?: string;
+  telegramId?: string;
+  role?: "ADMIN" | "USER";
+  verified?: boolean;
+}): Promise<AdminUser> {
+  const { data } = await apiClient.post<AdminUser>("/api/users/admin", payload);
+  return data;
+}
+
+export async function adminUpdateUser(
+  id: string,
+  payload: {
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    email?: string;
+    telegramId?: string | null;
+    role?: "ADMIN" | "USER";
+    verified?: boolean;
+  },
+): Promise<AdminUser> {
+  const { data } = await apiClient.patch<AdminUser>(`/api/users/${id}/admin`, payload);
+  return data;
+}
+
+export async function adminToggleVerification(
+  id: string,
+  verified: boolean,
+): Promise<AdminUser> {
+  const { data } = await apiClient.patch<AdminUser>(`/api/users/${id}/verify`, { verified });
+  return data;
+}
+
+export async function adminUpdateRole(
+  id: string,
+  role: "ADMIN" | "USER",
+): Promise<AdminUser> {
+  const { data } = await apiClient.patch<AdminUser>(`/api/users/${id}/role`, { role });
+  return data;
+}
+
+export async function adminDeleteUser(
+  id: string,
+): Promise<{ success: boolean; id: string }> {
+  const { data } = await apiClient.delete<{ success: boolean; id: string }>(`/api/users/${id}`);
+  return data;
+}

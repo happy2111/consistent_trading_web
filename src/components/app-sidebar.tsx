@@ -12,6 +12,7 @@ import {
   LogOut,
   MessageSquare,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -118,6 +119,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             })}
           </SidebarMenu>
         </SidebarGroup>
+
+        {(user as any)?.role === "ADMIN" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/admin/users" prefetch={true} />}
+                  isActive={pathname?.startsWith("/admin/users")}
+                  tooltip="Foydalanuvchilar"
+                  onMouseEnter={() => router.prefetch("/admin/users")}
+                  onPointerDown={() => router.prefetch("/admin/users")}
+                  className="transition-colors hover:bg-accent/80"
+                >
+                  <Users className="size-4 shrink-0 text-amber-500" />
+                  <div className="flex flex-1 items-center justify-between">
+                    <span className="font-medium">Foydalanuvchilar</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

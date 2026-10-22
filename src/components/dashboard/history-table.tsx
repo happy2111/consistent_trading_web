@@ -118,7 +118,7 @@ export function HistoryTable({ reports = [], isLoading }: HistoryTableProps) {
                 className="flex items-center justify-between text-xs cursor-pointer"
               >
                 <span>{opt.label}</span>
-                {statusFilter === opt.value && <Check className="size-3.5 text-purple-600" />}
+                {statusFilter === opt.value && <Check className="size-3.5 text-[#ff7a75]" />}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
