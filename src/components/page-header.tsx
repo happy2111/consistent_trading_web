@@ -47,44 +47,44 @@ export function PageHeader({ title, rightSlot, mobileSlot }: PageHeaderProps) {
             {user?.image ? (
               <AvatarImage src={user.image} alt={user.name ?? "User"} />
             ) : null}
-            <AvatarFallback className="bg-gradient-to-tr from-purple-600 to-indigo-600 text-xs font-bold text-white">
+            <AvatarFallback className="bg-gradient-to-tr from-[#8c1511] to-[#400907] text-xs font-bold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
         </button>
       } />
-      <DropdownMenuContent align="end" className="w-56 p-1.5">
+      <DropdownMenuContent align="end" className="w-56 p-1.5 bg-[#190a09] border border-[#400907]">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-semibold leading-none text-foreground">
+            <p className="text-sm font-semibold leading-none text-white">
               {user?.name ?? "Trader"}
             </p>
-            <p className="text-xs leading-none text-muted-foreground truncate">
+            <p className="text-xs leading-none text-[#a88a89] truncate">
               {user?.email ?? ""}
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400907]/60" />
 
         <DropdownMenuItem
           render={<Link href="/profile" />}
-          className="flex items-center gap-2 cursor-pointer py-2 text-xs"
+          className="flex items-center gap-2 cursor-pointer py-2 text-xs hover:bg-[#290a08]"
         >
-          <User className="size-4 text-emerald-500" />
+          <User className="size-4 text-[#ff7a75]" />
           <span>Mening profilim (Profile)</span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400907]/60" />
 
         <DropdownMenuItem
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="flex items-center justify-between cursor-pointer py-2 text-xs"
+          className="flex items-center justify-between cursor-pointer py-2 text-xs hover:bg-[#290a08]"
         >
           <span className="flex items-center gap-2">
             {theme === "dark" ? (
               <Sun className="size-4 text-amber-500" />
             ) : (
-              <Moon className="size-4 text-purple-500" />
+              <Moon className="size-4 text-[#ff7a75]" />
             )}
             <span>Mavzu: {theme === "dark" ? "Qorong'i" : "Yorug'"}</span>
           </span>
@@ -93,7 +93,7 @@ export function PageHeader({ title, rightSlot, mobileSlot }: PageHeaderProps) {
           </span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-[#400907]/60" />
 
         <DropdownMenuItem
           onClick={() => signOut({ callbackUrl: "/login" })}

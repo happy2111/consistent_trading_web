@@ -8,9 +8,11 @@ import {
   Check,
   CheckCheck,
   MessageSquare,
+  Pencil,
   Plus,
   Search,
   Send,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -19,6 +21,8 @@ import { useChatSocket } from "@/lib/use-chat-socket";
 import {
   createDirectChat,
   createGroupChat,
+  deleteChatMessage,
+  editChatMessage,
   fetchChatMessages,
   fetchChatRooms,
   fetchChatUsers,
@@ -105,19 +109,116 @@ export function ChatClient({
   const [selectedGroupMembers, setSelectedGroupMembers] = React.useState<string[]>([]);
   const [isSubmittingGroup, setIsSubmittingGroup] = React.useState(false);
 
-  // 1. Fetch Rooms
+  // Admin message action modal state (for edit & delete on long press)
+  const [selectedMessageForAction, setSelectedMessageForAction] = React.useState<any | null>(null);
+  const [isActionModalOpen, setIsActionModalOpen] = React.useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = React.useState(false);
+  const [editContent, setEditContent] = React.useState("");
+  const [isSubmittingAction, setIsSubmittingAction] = React.useState(false);
+
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggeredRef = React.useRef(false);
+
+  const clearLongPress = React.useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const triggerActionModal = React.useCallback((msg: any) => {
+    if (!isAdmin) return;
+    longPressTriggeredRef.current = true;
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try {
+        navigator.vibrate(50);
+      } catch {}
+    }
+    setSelectedMessageForAction(msg);
+    setIsActionModalOpen(true);
+  }, [isAdmin]);
+
+  const handleTouchStart = React.useCallback(
+    (msg: any, e: React.TouchEvent) => {
+      if (!isAdmin) return;
+      longPressTriggeredRef.current = false;
+      const touch = e.touches[0];
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+      clearLongPress();
+      longPressTimerRef.current = setTimeout(() => {
+        triggerActionModal(msg);
+      }, 500);
+    },
+    [isAdmin, clearLongPress, triggerActionModal],
+  );
+
+  const handleTouchMove = React.useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStartPosRef.current || !longPressTimerRef.current) return;
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearLongPress();
+      }
+    },
+    [clearLongPress],
+  );
+
+  const handleTouchEnd = React.useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleMouseDown = React.useCallback(
+    (msg: any, e: React.MouseEvent) => {
+      if (!isAdmin) return;
+      if (e.button !== 0) return; // Only left click
+      longPressTriggeredRef.current = false;
+
+      clearLongPress();
+      longPressTimerRef.current = setTimeout(() => {
+        triggerActionModal(msg);
+      }, 500);
+    },
+    [isAdmin, clearLongPress, triggerActionModal],
+  );
+
+  const handleMouseUp = React.useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
+  const handleContextMenu = React.useCallback(
+    (msg: any, e: React.MouseEvent) => {
+      if (!isAdmin) return;
+      e.preventDefault();
+      triggerActionModal(msg);
+    },
+    [isAdmin, triggerActionModal],
+  );
+
+  // In-memory cache for room messages to ensure instant switching (0ms delay)
+  const roomMessagesCacheRef = React.useRef<
+    Record<string, { messages: any[]; nextCursor: string | null }>
+  >({});
+
+  // 1. Fetch Rooms (cached with staleTime to avoid empty state flash)
   const { data: rooms = [], refetch: refetchRooms } = useQuery<ChatRoom[]>({
     queryKey: ["chatRooms", userId],
     queryFn: () => fetchChatRooms(userId),
     enabled: Boolean(userId),
+    staleTime: 1000 * 30,
     refetchInterval: 10000,
   });
 
-  // 2. Fetch Platform Users
+  // 2. Fetch Platform Users (cached with staleTime)
   const { data: platformUsers = [] } = useQuery<ChatUser[]>({
     queryKey: ["chatUsers", userId],
     queryFn: () => fetchChatUsers(userId),
     enabled: Boolean(userId),
+    staleTime: 1000 * 60,
   });
 
   // 3. Real-time WebSocket hook
@@ -127,13 +228,60 @@ export function ChatClient({
     typingUsers,
     onlineUsers,
     sendMessage,
+    editMessage,
+    deleteMessage,
     sendTyping,
     stopTyping,
   } = useChatSocket(userId, selectedChatId);
 
-  // 4. Load initial messages when room changes
+  // Admin save edit action
+  const handleSaveEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedMessageForAction || !editContent.trim() || isSubmittingAction) return;
+
+    setIsSubmittingAction(true);
+    try {
+      editMessage(selectedMessageForAction.id, editContent.trim());
+      await editChatMessage(selectedMessageForAction.id, editContent.trim(), userId).catch(() => {});
+      setIsEditModalOpen(false);
+      setSelectedMessageForAction(null);
+      setEditContent("");
+    } catch (err) {
+      console.error("Xabarni tahrirlashda xatolik:", err);
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  // Admin confirm delete action
+  const handleConfirmDelete = async () => {
+    if (!selectedMessageForAction || isSubmittingAction) return;
+
+    setIsSubmittingAction(true);
+    try {
+      deleteMessage(selectedMessageForAction.id);
+      await deleteChatMessage(selectedMessageForAction.id, userId).catch(() => {});
+      setIsDeleteConfirmOpen(false);
+      setIsActionModalOpen(false);
+      setSelectedMessageForAction(null);
+    } catch (err) {
+      console.error("Xabarni o'chirishda xatolik:", err);
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  // 4. Load initial messages when room changes with instant cache restore
   React.useEffect(() => {
     if (!selectedChatId) return;
+
+    // Instant display from cache (0ms lag when switching/opening chats)
+    const cached = roomMessagesCacheRef.current[selectedChatId];
+    if (cached && cached.messages.length > 0) {
+      setMessages(cached.messages);
+      setNextCursor(cached.nextCursor);
+      setTimeout(scrollToBottom, 30);
+    }
 
     let isMounted = true;
     fetchChatMessages(selectedChatId, undefined, 30)
@@ -157,18 +305,35 @@ export function ChatClient({
               .map((r: any) => r.userId) || [],
         }));
 
+        roomMessagesCacheRef.current[selectedChatId] = {
+          messages: initial,
+          nextCursor: res.nextCursor || null,
+        };
+
         setMessages(initial);
         setNextCursor(res.nextCursor || null);
         setTimeout(scrollToBottom, 60);
       })
       .catch(() => {
-        setMessages([]);
+        if (!cached) {
+          setMessages([]);
+        }
       });
 
     return () => {
       isMounted = false;
     };
   }, [selectedChatId, setMessages, userId]);
+
+  // Keep room cache in sync with active messages
+  React.useEffect(() => {
+    if (selectedChatId && messages.length > 0) {
+      roomMessagesCacheRef.current[selectedChatId] = {
+        messages,
+        nextCursor,
+      };
+    }
+  }, [messages, nextCursor, selectedChatId]);
 
   // Load older messages
   const loadOlderMessages = async () => {
@@ -235,8 +400,16 @@ export function ChatClient({
 
   // Open / create direct chat with a user
   const handleSelectUser = async (targetUser: ChatUser, existingChatId?: string | null) => {
-    if (existingChatId) {
-      setSelectedChatId(existingChatId);
+    const knownChatId =
+      existingChatId ||
+      rooms.find(
+        (r) =>
+          r.type === "DIRECT" &&
+          (r.participantIds?.includes(targetUser.id) || r.name === targetUser.name),
+      )?.id;
+
+    if (knownChatId) {
+      setSelectedChatId(knownChatId);
       setShowMobileList(false);
       return;
     }
@@ -813,7 +986,17 @@ export function ChatClient({
                       }`}
                     >
                       <div
-                        className={`max-w-[85%] sm:max-w-[550px] px-3.5 py-2 text-[14px] leading-relaxed shadow-sm transition-all ${
+                        onTouchStart={(e) => handleTouchStart(msg, e)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                        onMouseDown={(e) => handleMouseDown(msg, e)}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onContextMenu={(e) => handleContextMenu(msg, e)}
+                        className={`max-w-[85%] sm:max-w-[550px] px-3.5 py-2 text-[14px] leading-relaxed shadow-sm transition-all select-none ${
+                          isAdmin ? "cursor-pointer active:scale-[0.985]" : ""
+                        } ${
                           isMine
                             ? "bg-[#400907] border border-[#8c1511]/50 text-white rounded-2xl rounded-br-xs"
                             : "bg-[#290a08] border border-[#400907] text-[#f5e6e5] rounded-2xl rounded-bl-xs"
@@ -995,6 +1178,196 @@ export function ChatClient({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          ADMIN MESSAGE ACTION MODAL (Opened on Long Press)
+         ========================================================================= */}
+      {isActionModalOpen && selectedMessageForAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in-50"
+          onClick={() => setIsActionModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#190a09] border border-[#400907] rounded-3xl shadow-2xl overflow-hidden p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#400907]/60 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-[#8c1511]" />
+                <h4 className="text-sm font-bold text-white">Xabar amallari</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsActionModalOpen(false)}
+                className="size-7 rounded-full flex items-center justify-center text-[#a88a89] hover:text-white hover:bg-[#290a08] cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Selected message preview */}
+            <div className="bg-[#290a08]/90 border border-[#400907]/70 rounded-2xl p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-[#ff7a75]">
+                <span className="font-bold">{selectedMessageForAction.senderName}</span>
+                <span className="text-[#a88a89]">
+                  {formatMessageTimeUz(selectedMessageForAction.createdAt)}
+                </span>
+              </div>
+              <p className="text-xs text-white/90 line-clamp-3 whitespace-pre-wrap break-words">
+                {selectedMessageForAction.content}
+              </p>
+            </div>
+
+            {/* Actions: Edit & Delete */}
+            <div className="space-y-2 pt-1">
+              {/* Edit button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditContent(selectedMessageForAction.content);
+                  setIsActionModalOpen(false);
+                  setIsEditModalOpen(true);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[#290a08] hover:bg-[#400907] border border-[#400907] text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
+              >
+                <div className="size-8 rounded-xl bg-white/10 flex items-center justify-center text-[#ff7a75]">
+                  <Pencil className="size-4" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-bold text-white">Tahrirlash</p>
+                  <p className="text-[10px] text-[#a88a89]">Xabar matnini o&apos;zgartirish</p>
+                </div>
+              </button>
+
+              {/* Delete button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionModalOpen(false);
+                  setIsDeleteConfirmOpen(true);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[#400907]/40 hover:bg-[#8c1511] border border-[#8c1511]/40 text-[#ff7a75] hover:text-white text-xs font-semibold transition-all cursor-pointer shadow-sm group"
+              >
+                <div className="size-8 rounded-xl bg-[#8c1511]/30 group-hover:bg-white/20 flex items-center justify-center text-[#ff7a75] group-hover:text-white">
+                  <Trash2 className="size-4" />
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-bold text-[#ff7a75] group-hover:text-white">O&apos;chirish</p>
+                  <p className="text-[10px] text-[#a88a89] group-hover:text-white/80">Xabarni chatdan o&apos;chirib tashlash</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          ADMIN EDIT MESSAGE MODAL
+         ========================================================================= */}
+      {isEditModalOpen && selectedMessageForAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in-50"
+          onClick={() => !isSubmittingAction && setIsEditModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#190a09] border border-[#400907] rounded-3xl shadow-2xl overflow-hidden p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#400907]/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Pencil className="size-4 text-[#ff7a75]" />
+                <h4 className="text-sm font-bold text-white">Xabarni tahrirlash</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSubmittingAction}
+                className="size-7 rounded-full flex items-center justify-center text-[#a88a89] hover:text-white hover:bg-[#290a08] cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-[#a88a89]">Yangi xabar matni</label>
+              <textarea
+                rows={4}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="Xabar matnini kiriting..."
+                className="w-full rounded-2xl bg-[#290a08] border border-[#400907] focus:border-[#8c1511]/70 focus:outline-hidden p-3 text-sm text-white placeholder-[#8a7271] resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#400907]/60">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={isSubmittingAction}
+                className="px-4 py-2 rounded-xl bg-[#290a08] hover:bg-[#400907] text-xs font-semibold text-[#cccccc] transition-colors cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!editContent.trim() || isSubmittingAction}
+                className="px-5 py-2 rounded-xl bg-[#8c1511] hover:bg-[#a31914] disabled:opacity-40 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-[#8c1511]/30"
+              >
+                {isSubmittingAction ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          ADMIN DELETE CONFIRMATION MODAL
+         ========================================================================= */}
+      {isDeleteConfirmOpen && selectedMessageForAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4 animate-in fade-in-50"
+          onClick={() => !isSubmittingAction && setIsDeleteConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#190a09] border border-[#400907] rounded-3xl shadow-2xl overflow-hidden p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-2xl bg-[#8c1511]/20 border border-[#8c1511]/40 flex items-center justify-center text-[#ff7a75] shrink-0">
+                <Trash2 className="size-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">Xabarni o&apos;chirish</h4>
+                <p className="text-xs text-[#a88a89]">Ushbu xabar butunlay o&apos;chiriladi</p>
+              </div>
+            </div>
+
+            <div className="bg-[#290a08]/90 border border-[#400907]/70 rounded-2xl p-3 text-xs text-white/80 line-clamp-3">
+              &ldquo;{selectedMessageForAction.content}&rdquo;
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#400907]/60">
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                disabled={isSubmittingAction}
+                className="px-4 py-2 rounded-xl bg-[#290a08] hover:bg-[#400907] text-xs font-semibold text-[#cccccc] transition-colors cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isSubmittingAction}
+                className="px-5 py-2 rounded-xl bg-[#8c1511] hover:bg-[#a31914] disabled:opacity-40 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-[#8c1511]/30"
+              >
+                {isSubmittingAction ? "O'chirilmoqda..." : "Ha, o'chirish"}
+              </button>
+            </div>
           </div>
         </div>
       )}

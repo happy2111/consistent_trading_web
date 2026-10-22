@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   ArrowUpRight,
@@ -52,6 +52,7 @@ const navItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
 
   const user = session?.user;
@@ -70,8 +71,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-md">
+            <SidebarMenuButton size="lg" render={<Link href="/" prefetch={true} />}>
+              <div className="flex aspect-square size-9 items-center justify-center rounded-lg bg-[#8c1511] text-white shadow-md shadow-[#8c1511]/30">
                 <TrendingUp className="size-5" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -97,9 +98,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    render={<Link href={item.url} />}
+                    render={<Link href={item.url} prefetch={true} />}
                     isActive={isActive}
                     tooltip={item.title}
+                    onMouseEnter={() => router.prefetch(item.url)}
+                    onPointerDown={() => router.prefetch(item.url)}
                     className="transition-colors hover:bg-accent/80"
                   >
                     <item.icon className="size-4 shrink-0" />
@@ -123,6 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <div className="flex items-center justify-between rounded-lg border bg-sidebar-accent/50 p-2">
               <Link
                 href="/profile"
+                prefetch={true}
                 className="flex items-center gap-2.5 overflow-hidden flex-1 group transition-opacity hover:opacity-80"
                 title="Mening profilim"
               >

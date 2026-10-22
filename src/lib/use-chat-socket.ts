@@ -14,6 +14,10 @@ export interface ChatMessage {
   readBy?: string[];
 }
 
+let cachedSocket: Socket | null = null;
+let cachedSocketUserId: string | null = null;
+let socketDisconnectTimer: NodeJS.Timeout | null = null;
+
 export function useChatSocket(userId: string, currentChatId?: string) {
   const socketRef = useRef<Socket | null>(null);
   const currentChatIdRef = useRef<string | undefined>(currentChatId);
@@ -35,56 +39,70 @@ export function useChatSocket(userId: string, currentChatId?: string) {
   useEffect(() => {
     if (!userId) return;
 
+    if (socketDisconnectTimer) {
+      clearTimeout(socketDisconnectTimer);
+      socketDisconnectTimer = null;
+    }
+
     const baseUrl =
       process.env.NEXT_PUBLIC_WS_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
 
-    const socket = io(`${baseUrl}/chat`, {
-      auth: { userId },
-      query: { userId },
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: 25,
-      reconnectionDelay: 1000,
-    });
+    let socket: Socket;
+    if (cachedSocket && cachedSocketUserId === userId && cachedSocket.connected) {
+      socket = cachedSocket;
+    } else {
+      if (cachedSocket) {
+        cachedSocket.disconnect();
+        cachedSocket = null;
+      }
+
+      socket = io(`${baseUrl}/chat`, {
+        auth: { userId },
+        query: { userId },
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 25,
+        reconnectionDelay: 1000,
+      });
+
+      cachedSocket = socket;
+      cachedSocketUserId = userId;
+    }
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      // Upon connection, if a room is already chosen, join it
+    const handleConnect = () => {
       if (currentChatIdRef.current) {
         socket.emit("join_room", { chatId: currentChatIdRef.current });
       }
-    });
+    };
 
-    // Receive initial online users list
-    socket.on("online_users_list", (data: { userIds: string[] }) => {
+    const handleOnlineUsersList = (data: { userIds: string[] }) => {
       if (data?.userIds) {
         setOnlineUsers(new Set(data.userIds));
       }
-    });
+    };
 
-    // Real-time presence updates
-    socket.on(
-      "user_presence",
-      (data: { userId: string; status: "ONLINE" | "OFFLINE" }) => {
-        setOnlineUsers((prev) => {
-          const next = new Set(prev);
-          if (data.status === "ONLINE") {
-            next.add(data.userId);
-          } else {
-            next.delete(data.userId);
-          }
-          return next;
-        });
-      },
-    );
+    const handleUserPresence = (data: { userId: string; status: "ONLINE" | "OFFLINE" }) => {
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        if (data.status === "ONLINE") {
+          next.add(data.userId);
+        } else {
+          next.delete(data.userId);
+        }
+        return next;
+      });
+    };
 
-    // New message broadcast
-    socket.on("new_message", (msg: ChatMessage) => {
+    const handleNewMessage = (msg: ChatMessage) => {
+      if (currentChatIdRef.current && msg.chatId !== currentChatIdRef.current) {
+        return;
+      }
+
       setMessages((prev) => {
-        // If we have a temporary optimistic message with matching content, replace it
         const tempIdx = prev.findIndex(
           (m) => m.id.startsWith("temp-") && m.content === msg.content,
         );
@@ -97,10 +115,9 @@ export function useChatSocket(userId: string, currentChatId?: string) {
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-    });
+    };
 
-    // Message ACK from server
-    socket.on("message_ack", (ack: { tempId: string; messageId: string }) => {
+    const handleMessageAck = (ack: { tempId: string; messageId: string }) => {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === ack.tempId
@@ -108,86 +125,111 @@ export function useChatSocket(userId: string, currentChatId?: string) {
             : m,
         ),
       );
-    });
+    };
 
-    // Message edited broadcast
-    socket.on("message_edited", (data: { id: string; chatId: string; content: string }) => {
+    const handleMessageEdited = (data: { id: string; chatId: string; content: string }) => {
+      if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
       setMessages((prev) =>
         prev.map((m) =>
           m.id === data.id ? { ...m, content: data.content } : m
         ),
       );
-    });
+    };
 
-    // Message deleted broadcast
-    socket.on("message_deleted", (data: { id: string; chatId: string }) => {
+    const handleMessageDeleted = (data: { id: string; chatId: string }) => {
+      if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
       setMessages((prev) => prev.filter((m) => m.id !== data.id));
-    });
+    };
 
-    // Read status updates
-    socket.on(
-      "messages_read_update",
-      (data: { chatId: string; messageIds: string[]; userId: string }) => {
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (data.messageIds.includes(m.id)) {
-              const readBy = new Set(m.readBy || []);
-              readBy.add(data.userId);
-              return {
-                ...m,
-                status: "READ",
-                readBy: Array.from(readBy),
-              };
-            }
-            return m;
-          }),
-        );
-      },
-    );
-
-    // Typing indicators with scoped room check and auto-expiry timeout
-    socket.on(
-      "user_typing",
-      (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => {
-        if (data.userId === userId) return;
-        if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
-
-        if (data.isTyping) {
-          if (typingTimeoutsRef.current[data.userId]) {
-            clearTimeout(typingTimeoutsRef.current[data.userId]);
+    const handleMessagesReadUpdate = (data: { chatId: string; messageIds: string[]; userId: string }) => {
+      if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (data.messageIds.includes(m.id)) {
+            const readBy = new Set(m.readBy || []);
+            readBy.add(data.userId);
+            return {
+              ...m,
+              status: "READ",
+              readBy: Array.from(readBy),
+            };
           }
-          typingTimeoutsRef.current[data.userId] = setTimeout(() => {
-            setTypingUsers((prev) => {
-              const next = { ...prev };
-              delete next[data.userId];
-              return next;
-            });
-            delete typingTimeoutsRef.current[data.userId];
-          }, 3500);
+          return m;
+        }),
+      );
+    };
 
-          setTypingUsers((prev) => ({
-            ...prev,
-            [data.userId]: data.userName || "Foydalanuvchi",
-          }));
-        } else {
-          if (typingTimeoutsRef.current[data.userId]) {
-            clearTimeout(typingTimeoutsRef.current[data.userId]);
-            delete typingTimeoutsRef.current[data.userId];
-          }
+    const handleUserTyping = (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => {
+      if (data.userId === userId) return;
+      if (currentChatIdRef.current && data.chatId !== currentChatIdRef.current) return;
+
+      if (data.isTyping) {
+        if (typingTimeoutsRef.current[data.userId]) {
+          clearTimeout(typingTimeoutsRef.current[data.userId]);
+        }
+        typingTimeoutsRef.current[data.userId] = setTimeout(() => {
           setTypingUsers((prev) => {
             const next = { ...prev };
             delete next[data.userId];
             return next;
           });
+          delete typingTimeoutsRef.current[data.userId];
+        }, 3500);
+
+        setTypingUsers((prev) => ({
+          ...prev,
+          [data.userId]: data.userName || "Foydalanuvchi",
+        }));
+      } else {
+        if (typingTimeoutsRef.current[data.userId]) {
+          clearTimeout(typingTimeoutsRef.current[data.userId]);
+          delete typingTimeoutsRef.current[data.userId];
         }
-      },
-    );
+        setTypingUsers((prev) => {
+          const next = { ...prev };
+          delete next[data.userId];
+          return next;
+        });
+      }
+    };
+
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    socket.on("connect", handleConnect);
+    socket.on("online_users_list", handleOnlineUsersList);
+    socket.on("user_presence", handleUserPresence);
+    socket.on("new_message", handleNewMessage);
+    socket.on("message_ack", handleMessageAck);
+    socket.on("message_edited", handleMessageEdited);
+    socket.on("message_deleted", handleMessageDeleted);
+    socket.on("messages_read_update", handleMessagesReadUpdate);
+    socket.on("user_typing", handleUserTyping);
 
     return () => {
       Object.values(typingTimeoutsRef.current).forEach(clearTimeout);
       typingTimeoutsRef.current = {};
-      socket.disconnect();
-      socketRef.current = null;
+
+      socket.off("connect", handleConnect);
+      socket.off("online_users_list", handleOnlineUsersList);
+      socket.off("user_presence", handleUserPresence);
+      socket.off("new_message", handleNewMessage);
+      socket.off("message_ack", handleMessageAck);
+      socket.off("message_edited", handleMessageEdited);
+      socket.off("message_deleted", handleMessageDeleted);
+      socket.off("messages_read_update", handleMessagesReadUpdate);
+      socket.off("user_typing", handleUserTyping);
+
+      // Keep socket warm for 45s so navigating to other tabs doesn't destroy the connection
+      if (socketDisconnectTimer) clearTimeout(socketDisconnectTimer);
+      socketDisconnectTimer = setTimeout(() => {
+        if (cachedSocket) {
+          cachedSocket.disconnect();
+          cachedSocket = null;
+          cachedSocketUserId = null;
+        }
+      }, 45_000);
     };
   }, [userId]);
 

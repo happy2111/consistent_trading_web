@@ -10,16 +10,22 @@ export default async function ChatPage() {
     redirect("/login");
   }
 
-  const status = await fetchVerificationStatus(authId);
-  if (!status.verified) {
-    redirect("/onboarding");
+  let isVerified = Boolean(session.user?.verified);
+  let userId = session.user.id || "";
+  let userRole = (session?.user as any)?.role || "USER";
+
+  if (!isVerified) {
+    const status = await fetchVerificationStatus(authId);
+    if (!status.verified) {
+      redirect("/onboarding");
+    }
+    userId = status.userId || userId;
+    userRole = status.role || userRole;
   }
 
-  const userId = status.userId || session.user.id || "";
   const userName = session.user.name || "Trader";
   const userEmail = session.user.email || "";
   const userImage = session.user.image || "";
-  const userRole = (session?.user as any)?.role || status.role || "USER";
   const isAdmin = userRole === "ADMIN";
 
   return (

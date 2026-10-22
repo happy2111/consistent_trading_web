@@ -67,13 +67,29 @@ export async function authTelegramUser(payload: {
   return res.json();
 }
 
-/** Always fetch from Nest DB — never trust client/localStorage */
+// Short in-memory cache to prevent waterfall roundtrips on rapid tab transitions
+const verificationStatusCache = new Map<string, { data: VerificationStatus; expiresAt: number }>();
+
+export function invalidateVerificationCache(identifier?: string) {
+  if (identifier) {
+    verificationStatusCache.delete(identifier);
+  } else {
+    verificationStatusCache.clear();
+  }
+}
+
+/** Fetch from Nest DB with short-term memoization (30s) to eliminate navigation lag */
 export async function fetchVerificationStatus(
   identifier: string,
 ): Promise<VerificationStatus> {
   const base = apiBase();
   if (!base || !identifier) {
     return { userId: null, verified: false, role: "USER" };
+  }
+
+  const cached = verificationStatusCache.get(identifier);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
   }
 
   try {
@@ -90,16 +106,28 @@ export async function fetchVerificationStatus(
       if (!fallbackRes.ok) {
         return { userId: null, verified: false, role: "USER" };
       }
-      return (await fallbackRes.json()) as VerificationStatus;
+      const fallbackData = (await fallbackRes.json()) as VerificationStatus;
+      verificationStatusCache.set(identifier, {
+        data: fallbackData,
+        expiresAt: Date.now() + 30_000,
+      });
+      return fallbackData;
     }
     const data = (await res.json()) as VerificationStatus;
-    return {
+    const result: VerificationStatus = {
       googleId: data.googleId,
       telegramId: data.telegramId,
       userId: data.userId ?? null,
       verified: Boolean(data.verified),
       role: data.role || "USER",
     };
+
+    verificationStatusCache.set(identifier, {
+      data: result,
+      expiresAt: Date.now() + 30_000,
+    });
+
+    return result;
   } catch {
     return { userId: null, verified: false, role: "USER" };
   }

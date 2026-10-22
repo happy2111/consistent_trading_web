@@ -120,6 +120,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return account?.provider === "google" && Boolean(profile?.email);
     },
   },
-  session: { strategy: "jwt", maxAge: 60 * 60, updateAge: 0 },
+  session: { strategy: "jwt", maxAge: 60 * 60, updateAge: 60 * 5 },
   jwt: { maxAge: 60 * 60 },
 });

@@ -375,17 +375,13 @@ export function ProfileClient({ userId, role }: ProfileClientProps) {
             <div className="flex items-center justify-between py-1.5 border-b border-border/50">
               <span className="text-muted-foreground">Hujjat raqami:</span>
               <span className="font-semibold text-foreground font-mono">
-                {user?.documentNumber
-                  ? `${user.documentNumber.slice(0, 3)}****${user.documentNumber.slice(-2)}`
-                  : "—"}
+                {user?.documentNumber || "—"}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5 border-b border-border/50">
               <span className="text-muted-foreground">JSHSHIR (PINFL):</span>
               <span className="font-semibold text-foreground font-mono">
-                {user?.jshshir
-                  ? `${user.jshshir.slice(0, 4)}********${user.jshshir.slice(-2)}`
-                  : "—"}
+                {user?.jshshir || "—"}
               </span>
             </div>
             <div className="flex items-center justify-between py-1.5">

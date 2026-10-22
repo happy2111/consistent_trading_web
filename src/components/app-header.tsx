@@ -57,8 +57,8 @@ export function AppHeader() {
           variant={isAdmin ? "default" : "outline"}
           className={
             isAdmin
-              ? "bg-purple-600 font-semibold text-white hover:bg-purple-600"
-              : "border-muted-foreground/30 font-medium"
+              ? "bg-[#8c1511] border border-[#8c1511] font-semibold text-white hover:bg-[#a31914] shadow-sm shadow-[#8c1511]/30"
+              : "border-[#400907] bg-[#290a08] text-[#a88a89] font-medium"
           }
         >
           {role}

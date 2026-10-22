@@ -11,13 +11,18 @@ export default async function CalendarPage() {
     redirect("/login");
   }
 
-  const status = await fetchVerificationStatus(authId);
-  if (!status.verified) {
-    redirect("/onboarding");
-  }
+  let isVerified = Boolean(session.user?.verified);
+  let userId = session.user.id || "";
+  let role = (session.user.role as "ADMIN" | "USER") || "USER";
 
-  const userId = status.userId || session.user.id || "";
-  const role = status.role || (session.user.role as "ADMIN" | "USER") || "USER";
+  if (!isVerified) {
+    const status = await fetchVerificationStatus(authId);
+    if (!status.verified) {
+      redirect("/onboarding");
+    }
+    userId = status.userId || userId;
+    role = status.role || role;
+  }
 
   return (
     <AppShell>

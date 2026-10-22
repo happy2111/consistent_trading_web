@@ -11,12 +11,16 @@ export default async function HistoryPage() {
     redirect("/login");
   }
 
-  const status = await fetchVerificationStatus(authId);
-  if (!status.verified) {
-    redirect("/onboarding");
-  }
+  let isVerified = Boolean(session.user?.verified);
+  let userId = session.user.id || "";
 
-  const userId = status.userId || session.user.id || "";
+  if (!isVerified) {
+    const status = await fetchVerificationStatus(authId);
+    if (!status.verified) {
+      redirect("/onboarding");
+    }
+    userId = status.userId || userId;
+  }
 
   return (
     <AppShell>
